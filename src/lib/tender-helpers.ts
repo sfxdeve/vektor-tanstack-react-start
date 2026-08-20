@@ -1,23 +1,33 @@
 import type { TenderRow } from "@/db/schema/tender";
 
-function parseJsonArray(value: string | null | undefined): unknown[] {
-  if (!value) return [];
+function parseJson<T>(
+  value: string | null | undefined,
+  fallback: T,
+  predicate: (v: unknown) => v is T,
+): T {
+  if (!value) return fallback;
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(value) as unknown;
+    return predicate(parsed) ? parsed : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
+function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseJsonArray(value: string | null | undefined): unknown[] {
+  return parseJson(value, [] as unknown[], isArray);
+}
+
 function parseJsonRecord(value: string | null | undefined): Record<string, unknown> {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
+  return parseJson(value, {} as Record<string, unknown>, isRecord);
 }
 
 export function toApiTender(row: TenderRow) {

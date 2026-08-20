@@ -62,75 +62,70 @@ const COL_SIGNATURE = [6 * CM, 10 * CM];
 
 // --- Helpers ---
 
+function pickString(
+  raw: Record<string, unknown>,
+  keys: string[],
+  fallback: string | null = null,
+): string | null {
+  for (const k of keys) {
+    const v = raw[k];
+    if (v == null || v === "") continue;
+    if (typeof v === "string") return v;
+    if (typeof v === "number" || typeof v === "boolean") return String(v);
+    // For other primitives, fall through; objects are not valid for SBD string fields
+    if (typeof v === "bigint") return String(v);
+  }
+  return fallback;
+}
+
+function pickNumber(raw: Record<string, unknown>, keys: string[]): number | null {
+  for (const k of keys) {
+    const v = raw[k];
+    if (v != null && v !== "") {
+      const n = Number(v);
+      if (!Number.isNaN(n)) return n;
+    }
+  }
+  return null;
+}
+
 function toSbdCompany(raw: unknown): SbdCompany {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const companyName =
-    (r.company_name as string) ?? (r.companyName as string) ?? (r.name as string) ?? "";
-  const cipcNum = (r.cipc_num as string) ?? (r.cipcNum as string) ?? "";
-  const csdMaaaNum = (r.csd_maaa_num as string) ?? (r.csdMaaaNum as string) ?? null;
-  const sarsTcsPin = (r.sars_tcs_pin as string) ?? (r.sarsTcsPin as string) ?? null;
-  const cidbCrsNum = (r.cidb_crs_num as string) ?? (r.cidbCrsNum as string) ?? null;
-  const bbbeeLevelRaw = (r.bbbee_level as unknown) ?? (r.bbbeeLevel as unknown) ?? null;
-  let bbbeeLevel: number | null = null;
-  if (bbbeeLevelRaw != null && bbbeeLevelRaw !== "") {
-    const n = Number(bbbeeLevelRaw);
-    if (Number.isInteger(n)) bbbeeLevel = n;
-  }
-  const authorisedSignatoryName =
-    (r.authorised_signatory_name as string) ?? (r.authorisedSignatoryName as string) ?? null;
-  const authorisedSignatoryPosition =
-    (r.authorised_signatory_position as string) ??
-    (r.authorisedSignatoryPosition as string) ??
-    null;
+  const rawLevel = pickNumber(r, ["bbbee_level", "bbbeeLevel"]);
+  const bbbeeLevel = rawLevel != null && Number.isInteger(rawLevel) ? rawLevel : null;
 
   return {
-    companyName: String(companyName ?? ""),
-    cipcNum: String(cipcNum ?? ""),
-    csdMaaaNum: csdMaaaNum ? String(csdMaaaNum) : null,
-    sarsTcsPin: sarsTcsPin ? String(sarsTcsPin) : null,
-    cidbCrsNum: cidbCrsNum ? String(cidbCrsNum) : null,
+    companyName: pickString(r, ["company_name", "companyName", "name"], "") ?? "",
+    cipcNum: pickString(r, ["cipc_num", "cipcNum"], "") ?? "",
+    csdMaaaNum: pickString(r, ["csd_maaa_num", "csdMaaaNum"]),
+    sarsTcsPin: pickString(r, ["sars_tcs_pin", "sarsTcsPin"]),
+    cidbCrsNum: pickString(r, ["cidb_crs_num", "cidbCrsNum"]),
     bbbeeLevel,
-    authorisedSignatoryName: authorisedSignatoryName ? String(authorisedSignatoryName) : null,
-    authorisedSignatoryPosition: authorisedSignatoryPosition
-      ? String(authorisedSignatoryPosition)
-      : null,
+    authorisedSignatoryName: pickString(r, [
+      "authorised_signatory_name",
+      "authorisedSignatoryName",
+    ]),
+    authorisedSignatoryPosition: pickString(r, [
+      "authorised_signatory_position",
+      "authorisedSignatoryPosition",
+    ]),
   };
 }
 
 function toSbdTender(raw: unknown): SbdTender {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const tenderNumber =
-    (r.tender_number as string) ??
-    (r.tenderNumber as string) ??
-    (r.tender_number as string) ??
-    null;
-  const title =
-    (r.title as string) ?? (r.tender_title as string) ?? (r.tenderTitle as string) ?? "";
-  const issuingEntity =
-    (r.issuing_entity as string) ??
-    (r.issuingEntity as string) ??
-    (r.issuing_entity as string) ??
-    null;
-  const closingDate =
-    (r.closing_date as string) ?? (r.closingDate as string) ?? (r.closing_date as string) ?? null;
-  const preferencePointSystem =
-    (r.preference_point_system as string) ??
-    (r.preferencePointSystem as string) ??
-    (r.preference_system as string) ??
-    null;
-  const eligibleBbbeePoints =
-    (r.eligible_bbbee_points as number) ?? (r.eligibleBbbeePoints as number) ?? null;
-
+  const eligibleRaw = pickNumber(r, ["eligible_bbbee_points", "eligibleBbbeePoints"]);
   return {
-    tenderNumber: tenderNumber ? String(tenderNumber) : null,
-    title: String(title ?? ""),
-    issuingEntity: issuingEntity ? String(issuingEntity) : null,
-    closingDate: closingDate ? String(closingDate) : null,
-    preferencePointSystem: preferencePointSystem ? String(preferencePointSystem) : null,
-    eligibleBbbeePoints:
-      eligibleBbbeePoints != null && !Number.isNaN(Number(eligibleBbbeePoints))
-        ? Number(eligibleBbbeePoints)
-        : null,
+    tenderNumber: pickString(r, ["tender_number", "tenderNumber"]),
+    title: pickString(r, ["title", "tender_title", "tenderTitle"], "") ?? "",
+    issuingEntity: pickString(r, ["issuing_entity", "issuingEntity"]),
+    closingDate: pickString(r, ["closing_date", "closingDate"]),
+    preferencePointSystem: pickString(r, [
+      "preference_point_system",
+      "preferencePointSystem",
+      "preference_system",
+    ]),
+    eligibleBbbeePoints: eligibleRaw,
   };
 }
 

@@ -459,13 +459,35 @@ function AnalyzePage() {
                       {tenderList.slice(0, 5).map((t) => (
                         <li
                           key={t.id}
-                          className="flex items-center justify-between rounded-sm border border-zinc-200 bg-white px-4 py-3 text-sm"
+                          className="flex items-center justify-between gap-3 rounded-sm border border-zinc-200 bg-white px-4 py-3 text-sm"
                           data-testid={`tender-list-item-${t.id}`}
                         >
-                          <span className="font-medium truncate">{t.title ?? "Untitled"}</span>
-                          <span className="ml-3 shrink-0 text-xs text-zinc-500">
-                            {t.fit_score ?? ""}% • {t.required_cidb_grade ?? ""}
-                          </span>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium truncate block">
+                              {t.title ?? "Untitled"}
+                            </span>
+                            <span className="text-xs text-zinc-500">
+                              {t.fit_score ?? ""}% • {t.required_cidb_grade ?? ""}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              data-testid={`sbd4-btn-${t.id}`}
+                              onClick={() => void downloadSbd(t.id, "sbd4")}
+                              aria-label={`Download SBD 4 for ${t.title ?? t.id}`}
+                              className="inline-flex items-center gap-1 rounded-sm border border-zinc-900 px-2.5 py-1 text-xs font-semibold text-zinc-900 hover:bg-zinc-900 hover:text-white transition-colors"
+                            >
+                              SBD 4
+                            </button>
+                            <button
+                              data-testid={`sbd61-btn-${t.id}`}
+                              onClick={() => void downloadSbd(t.id, "sbd61")}
+                              aria-label={`Download SBD 6.1 for ${t.title ?? t.id}`}
+                              className="inline-flex items-center gap-1 rounded-sm border border-zinc-900 px-2.5 py-1 text-xs font-semibold text-zinc-900 hover:bg-zinc-900 hover:text-white transition-colors"
+                            >
+                              SBD 6.1
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>

@@ -36,11 +36,11 @@ test.describe("SBD PDF generation", () => {
     await page.getByTestId("select-bbbee-level").click();
     await page.getByRole("option", { name: /Level 1/ }).click();
     // Try to fill authorised signatory if fields exist (may be behind extra UI)
-    const signatoryName = page.getByTestId("input-authorised-name");
+    const signatoryName = page.getByTestId("input-authorised-signatory-name");
     if (await signatoryName.isVisible().catch(() => false)) {
       await signatoryName.fill("Jane Doe");
     }
-    const signatoryPos = page.getByTestId("input-authorised-position");
+    const signatoryPos = page.getByTestId("input-authorised-signatory-position");
     if (await signatoryPos.isVisible().catch(() => false)) {
       await signatoryPos.fill("Director");
     }
@@ -65,13 +65,16 @@ test.describe("SBD PDF generation", () => {
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId("fit-score-card")).toBeVisible();
 
-    // UI exposes both SBD download buttons
+    // UI exposes both SBD download buttons (ephemeral result)
     await expect(page.getByTestId("download-sbd4-btn")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("download-sbd61-btn")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("sbd-downloads")).toBeVisible();
-    // Buttons have branded styling? Check they are actionable
     await expect(page.getByTestId("download-sbd4-btn")).toContainText("SBD 4");
     await expect(page.getByTestId("download-sbd61-btn")).toContainText("SBD 6.1");
+
+    // Persistent per-tender SBD actions — "for any analyzed tender" (survives navigation)
+    await expect(page.getByTestId("tender-list-section")).toBeVisible({ timeout: 10000 });
+    // Tender list will populate; poll until we can resolve tenderId below
 
     // Capture tenderId for API verification
     const tenderId = await page.evaluate(async () => {
@@ -83,6 +86,9 @@ test.describe("SBD PDF generation", () => {
       return list[0]?.id ?? null;
     });
     expect(tenderId).toBeTruthy();
+    // Persistent per-tender actions in Recent Tenders list
+    await expect(page.getByTestId(`sbd4-btn-${tenderId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`sbd61-btn-${tenderId}`)).toBeVisible({ timeout: 10000 });
 
     // Verify SBD4 download via direct API fetch (no R2 persistence required, ownership respected)
     const sbd4Status = await page.evaluate(async (tid) => {
@@ -134,6 +140,9 @@ test.describe("SBD PDF generation", () => {
       return list[0]?.id ?? null;
     });
     expect(tenderId2).toBeTruthy();
+    // Newest tender also has persistent SBD actions
+    await expect(page.getByTestId(`sbd4-btn-${tenderId2}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`sbd61-btn-${tenderId2}`)).toBeVisible({ timeout: 10000 });
     const sbd61_90 = await page.evaluate(async (tid) => {
       const res = await fetch(`/api/tender/${tid}/sbd61`);
       const buf = await res.arrayBuffer();
