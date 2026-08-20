@@ -36,6 +36,10 @@ function SignupPage() {
 
   useEffect(() => {
     if (!refCode) return;
+    // Persist ref code for attribution retry if signup aborts mid-flight
+    try {
+      localStorage.setItem("vektor_ref_code", refCode);
+    } catch {}
     // Attempt lookup but never block signup if it fails or code is invalid
     fetch(`/api/referrals/lookup?code=${encodeURIComponent(refCode)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -47,6 +51,35 @@ function SignupPage() {
       .catch(() => setRefPreview(null));
   }, [refCode]);
 
+  // Retry pending attribution if user lands here authenticated (e.g., after abort)
+  useEffect(() => {
+    let cancelled = false;
+    void authClient.getSession().then((res) => {
+      if (cancelled) return;
+      const user = (res as unknown as { data?: { user?: { id: string } } })?.data?.user;
+      if (!user) return;
+      let pending: string | null = null;
+      try {
+        pending = localStorage.getItem("vektor_ref_code");
+      } catch {}
+      if (!pending) return;
+      void fetch("/api/referrals/claim", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: pending }),
+      }).then((r) => {
+        if (r.ok) {
+          try {
+            localStorage.removeItem("vektor_ref_code");
+          } catch {}
+        }
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPasswordAcceptable(password, email)) {
@@ -55,14 +88,16 @@ function SignupPage() {
     }
     setSubmitting(true);
     try {
-      // Store ref code in localStorage for later referral slice to pick up if backend doesn't handle it directly
-      if (refCode) {
-        try {
-          localStorage.setItem("vektor_ref_code", refCode);
-        } catch {}
-      }
+      // Server-side attribution: pass referredByCode so the after-hook can create the referrals row atomically.
+      // Client-side claim is kept as best-effort fallback for older sessions.
+      const normalizedRef = refCode ? refCode.trim().toUpperCase() : undefined;
       await authClient.signUp.email(
-        { email: email.trim(), password, name: name.trim() || (email.split("@")[0] ?? email) },
+        {
+          email: email.trim(),
+          password,
+          name: name.trim() || (email.split("@")[0] ?? email),
+          ...(normalizedRef ? { referredByCode: normalizedRef } : {}),
+        } as unknown as { email: string; password: string; name: string; referredByCode?: string },
         {
           onError: (ctx) => {
             toast.error(ctx.error.message || "Signup failed");
@@ -70,16 +105,21 @@ function SignupPage() {
           },
         },
       );
-      // Attribution: if signup carried ?ref=, link invitee -> referrer (first-code-wins, self-blocked)
+      // Fallback: if server hook missed (e.g., hook not yet deployed), try claim endpoint.
       if (refCode) {
         try {
-          await fetch("/api/referrals/claim", {
+          const claimRes = await fetch("/api/referrals/claim", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ code: refCode }),
           });
+          if (claimRes.ok) {
+            try {
+              localStorage.removeItem("vektor_ref_code");
+            } catch {}
+          }
         } catch {
-          // non-blocking — referral attribution is best-effort
+          // non-blocking — attribution will be retried via the mount effect
         }
       }
       toast.success("Account created — welcome to Vektor");

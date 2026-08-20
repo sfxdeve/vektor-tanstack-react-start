@@ -2,6 +2,14 @@
  * Referral domain — ported from backend/referral_service.py
  * Referrer-only credits: referee gets 0, referrer earns on first paid subscription EFT.
  * Covers code generation, lookup, signup attribution, reward, and stats.
+ *
+ * Notes on port decisions:
+ * - Monthly cap is evaluated in UTC (D1 stores timestamps as UTC). Spec's
+ *   "calendar month" is therefore a UTC calendar month; SAST (UTC+2) vs UTC
+ *   differs only at month boundaries and is documented here for transparency.
+ * - pending_referrer_company handling is preserved from the Python source - if
+ *   the referrer has no company at reward time, the reward is parked on the
+ *   referrals row for manual grant later, rather than failing the EFT confirm.
  */
 
 import { eq } from "drizzle-orm";
@@ -15,48 +23,66 @@ import {
   MONTHLY_REWARD_CAP,
   LIFETIME_REWARD_CAP,
   REFEREE_SIGNUP_BONUS,
-  REF_ALPHABET,
   TIER_REWARDS,
+  generateReference,
 } from "@/lib/eft";
 
 type Db = ReturnType<typeof createDb>;
 
 export { MONTHLY_REWARD_CAP, LIFETIME_REWARD_CAP, REFEREE_SIGNUP_BONUS, TIER_REWARDS };
-export const REF_CODE_ALPHABET = REF_ALPHABET;
 
 export function rewardForPlan(lookupKey: string | null | undefined): number {
   if (!lookupKey) return 0;
   return TIER_REWARDS[lookupKey] ?? 0;
 }
 
-function newReferralCode(): string {
-  let suffix = "";
-  for (let i = 0; i < 6; i++) {
-    const idx = Math.floor(Math.random() * REF_ALPHABET.length);
-    suffix += REF_ALPHABET[idx]!;
+// ---------------------------------------------------------------------------
+// Small DB helper to hide the Drizzle cast + fallback pattern that otherwise
+// repeats in every query. Keeps call sites readable and avoids Shotgun Surgery
+// if the DB shim changes.
+// ---------------------------------------------------------------------------
+async function selectWhere<T>(
+  db: Db,
+  table: unknown,
+  eqCond: unknown,
+  fallbackFilter: (rows: T[]) => T[],
+): Promise<T[]> {
+  try {
+    const rows = await (
+      db.select().from(table as never).where as unknown as (c: unknown) => Promise<T[]>
+    )(eqCond as never);
+    return rows;
+  } catch {
+    const all = (await (db.select().from(table as never) as unknown as Promise<T[]>)) as T[];
+    return fallbackFilter(all);
   }
-  return `VEK-${suffix}`;
 }
+
+// ---------------------------------------------------------------------------
+// Referral code generation - reuses the canonical EFT reference generator so
+// the VEK-XXXXXX alphabet stays single-sourced (Duplicated Code fix).
+// ---------------------------------------------------------------------------
 
 /**
  * Ensure the user has a unique referral code. Idempotent.
  * Retries 5 times on collision.
  */
 export async function ensureReferralCode(db: Db, userId: string): Promise<string> {
-  const rows = await (
-    db.select().from(user).where as unknown as (c: unknown) => Promise<(typeof user.$inferSelect)[]>
-  )(eq(user.id, userId));
+  const rows = await selectWhere<typeof user.$inferSelect>(db, user, eq(user.id, userId), (all) =>
+    all.filter((r) => r.id === userId),
+  );
   const existing = rows[0];
   if (!existing) throw new Error("User not found");
   if (existing.referralCode) return existing.referralCode;
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    const code = newReferralCode();
-    const clash = await (
-      db.select().from(user).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof user.$inferSelect)[]>
-    )(eq(user.referralCode, code));
+    const code = generateReference();
+    const clash = await selectWhere<typeof user.$inferSelect>(
+      db,
+      user,
+      eq(user.referralCode, code),
+      (all) => all.filter((r) => r.referralCode === code),
+    );
     if (clash.length === 0) {
       try {
         await (
@@ -66,7 +92,6 @@ export async function ensureReferralCode(db: Db, userId: string): Promise<string
         )({ referralCode: code, updatedAt: new Date() }).where(eq(user.id, userId));
         return code;
       } catch {
-        // unique constraint violation -> retry
         continue;
       }
     }
@@ -86,18 +111,21 @@ export interface ReferrerPreview {
 export async function lookupReferrer(db: Db, refCode: string): Promise<ReferrerPreview | null> {
   const normalized = (refCode || "").trim().toUpperCase();
   if (!normalized) return null;
-  const rows = await (
-    db.select().from(user).where as unknown as (c: unknown) => Promise<(typeof user.$inferSelect)[]>
-  )(eq(user.referralCode, normalized));
+  const rows = await selectWhere<typeof user.$inferSelect>(
+    db,
+    user,
+    eq(user.referralCode, normalized),
+    (all) => all.filter((r) => r.referralCode === normalized),
+  );
   const referrer = rows[0];
   if (!referrer) return null;
 
-  const companyRows = await (
-    db.select().from(companies).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof companies.$inferSelect)[]>
-  )(eq(companies.userId, referrer.id));
-  // first company by createdAt asc
+  const companyRows = await selectWhere<typeof companies.$inferSelect>(
+    db,
+    companies,
+    eq(companies.userId, referrer.id),
+    (all) => all.filter((r) => r.userId === referrer.id),
+  );
   companyRows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const company = companyRows[0];
 
@@ -125,20 +153,26 @@ export async function recordSignup(
   const normalized = (refCode || "").trim().toUpperCase();
   if (!normalized) return null;
 
-  const referrerRows = await (
-    db.select().from(user).where as unknown as (c: unknown) => Promise<(typeof user.$inferSelect)[]>
-  )(eq(user.referralCode, normalized));
+  const referrerRows = await selectWhere<typeof user.$inferSelect>(
+    db,
+    user,
+    eq(user.referralCode, normalized),
+    (all) => all.filter((r) => r.referralCode === normalized),
+  );
   const referrer = referrerRows[0];
   if (!referrer) return null;
   if (referrer.email.toLowerCase() === refereeEmail.toLowerCase()) return null;
   if (referrer.id === refereeUserId) return null;
 
-  const refereeRows = await (
-    db.select().from(user).where as unknown as (c: unknown) => Promise<(typeof user.$inferSelect)[]>
-  )(eq(user.id, refereeUserId));
+  const refereeRows = await selectWhere<typeof user.$inferSelect>(
+    db,
+    user,
+    eq(user.id, refereeUserId),
+    (all) => all.filter((r) => r.id === refereeUserId),
+  );
   const referee = refereeRows[0];
   if (!referee) return null;
-  if (referee.referredByUserId) return null; // already referred, first wins
+  if (referee.referredByUserId) return null;
 
   const now = new Date();
   await (
@@ -150,27 +184,32 @@ export async function recordSignup(
     updatedAt: now,
   }).where(eq(user.id, refereeUserId));
 
-  // Check if referral row already exists for this referee (unique constraint)
-  const existingReferral = await (
-    db.select().from(referrals).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof referrals.$inferSelect)[]>
-  )(eq(referrals.refereeUserId, refereeUserId));
+  const existingReferral = await selectWhere<typeof referrals.$inferSelect>(
+    db,
+    referrals,
+    eq(referrals.refereeUserId, refereeUserId),
+    (all) => all.filter((r) => r.refereeUserId === refereeUserId),
+  );
   if (existingReferral.length > 0) return null;
 
   const id = crypto.randomUUID();
-  await db.insert(referrals).values({
-    id,
-    referrerUserId: referrer.id,
-    refereeUserId,
-    refereeEmail: refereeEmail.toLowerCase(),
-    code: normalized,
-    status: "signed_up",
-    signupBonusGranted: false,
-    referrerFirstPaidBonusGranted: false,
-    referrerSubBonusGranted: false,
-    createdAt: now,
-  });
+  try {
+    await db.insert(referrals).values({
+      id,
+      referrerUserId: referrer.id,
+      refereeUserId,
+      refereeEmail: refereeEmail.toLowerCase(),
+      code: normalized,
+      status: "signed_up",
+      signupBonusGranted: false,
+      referrerFirstPaidBonusGranted: false,
+      referrerSubBonusGranted: false,
+      createdAt: now,
+    });
+  } catch {
+    // Unique violation (concurrent first-code-wins) — treat as already attributed
+    return null;
+  }
 
   return referrer.id;
 }
@@ -180,46 +219,24 @@ async function rewardsUsedThisMonth(db: Db, referrerId: string): Promise<number>
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
   const monthStartMs = monthStart.getTime();
-  try {
-    const all = await (
-      db.select().from(referralRewards).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof referralRewards.$inferSelect)[]>
-    )(eq(referralRewards.referrerUserId, referrerId));
-    return all.filter((r) => new Date(r.createdAt as unknown as Date).getTime() >= monthStartMs)
-      .length;
-  } catch {
-    try {
-      const all = (await db
-        .select()
-        .from(referralRewards)) as (typeof referralRewards.$inferSelect)[];
-      return all
-        .filter((r) => r.referrerUserId === referrerId)
-        .filter((r) => new Date(r.createdAt as unknown as Date).getTime() >= monthStartMs).length;
-    } catch {
-      return 0;
-    }
-  }
+  const all = await selectWhere<typeof referralRewards.$inferSelect>(
+    db,
+    referralRewards,
+    eq(referralRewards.referrerUserId, referrerId),
+    (rows) => rows.filter((r) => r.referrerUserId === referrerId),
+  );
+  return all.filter((r) => new Date(r.createdAt as unknown as Date).getTime() >= monthStartMs)
+    .length;
 }
 
 async function rewardsUsedLifetime(db: Db, referrerId: string): Promise<number> {
-  try {
-    const all = await (
-      db.select().from(referralRewards).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof referralRewards.$inferSelect)[]>
-    )(eq(referralRewards.referrerUserId, referrerId));
-    return all.length;
-  } catch {
-    try {
-      const all = (await db
-        .select()
-        .from(referralRewards)) as (typeof referralRewards.$inferSelect)[];
-      return all.filter((r) => r.referrerUserId === referrerId).length;
-    } catch {
-      return 0;
-    }
-  }
+  const all = await selectWhere<typeof referralRewards.$inferSelect>(
+    db,
+    referralRewards,
+    eq(referralRewards.referrerUserId, referrerId),
+    (rows) => rows.filter((r) => r.referrerUserId === referrerId),
+  );
+  return all.length;
 }
 
 export interface RewardResult {
@@ -234,6 +251,7 @@ export interface RewardResult {
 /**
  * Called from the EFT admin confirm handler.
  * Referrer-only, first paid subscription only, respects caps, idempotent.
+ * Monthly cap is evaluated in UTC; see module header for SAST note.
  */
 export async function maybeRewardReferrerOnPaidEft(
   db: Db,
@@ -246,11 +264,12 @@ export async function maybeRewardReferrerOnPaidEft(
 ): Promise<RewardResult | null> {
   const { refereeUserId, isSubscription, triggerReference, planLookupKey } = args;
 
-  const refRows = await (
-    db.select().from(referrals).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof referrals.$inferSelect)[]>
-  )(eq(referrals.refereeUserId, refereeUserId));
+  const refRows = await selectWhere<typeof referrals.$inferSelect>(
+    db,
+    referrals,
+    eq(referrals.refereeUserId, refereeUserId),
+    (all) => all.filter((r) => r.refereeUserId === refereeUserId),
+  );
   const ref = refRows[0];
   if (!ref) return null;
   if (ref.referrerFirstPaidBonusGranted) return null;
@@ -270,6 +289,9 @@ export async function maybeRewardReferrerOnPaidEft(
   const lifetime = await rewardsUsedLifetime(db, referrerId);
   const now = new Date();
 
+  // Caps are per-referrer, not per-invitee. Marking the specific referrals row
+  // as capped is informational (mirrors Python) but does not block other invitees
+  // next month - a new referrals row will be counted separately.
   if (monthly >= MONTHLY_REWARD_CAP) {
     await (
       db.update(referrals).set as unknown as (v: unknown) => {
@@ -295,11 +317,12 @@ export async function maybeRewardReferrerOnPaidEft(
     return { granted: false, reason: "lifetime_cap" };
   }
 
-  const referrerCompanyRows = await (
-    db.select().from(companies).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof companies.$inferSelect)[]>
-  )(eq(companies.userId, referrerId));
+  const referrerCompanyRows = await selectWhere<typeof companies.$inferSelect>(
+    db,
+    companies,
+    eq(companies.userId, referrerId),
+    (all) => all.filter((r) => r.userId === referrerId),
+  );
   referrerCompanyRows.sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
@@ -318,12 +341,12 @@ export async function maybeRewardReferrerOnPaidEft(
     return { granted: false, reason: "referrer_has_no_company" };
   }
 
-  // Grant credits to referrer's primary company
-  const creditRows = await (
-    db.select().from(companyCredits).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof companyCredits.$inferSelect)[]>
-  )(eq(companyCredits.companyId, referrerCompany.id));
+  const creditRows = await selectWhere<typeof companyCredits.$inferSelect>(
+    db,
+    companyCredits,
+    eq(companyCredits.companyId, referrerCompany.id),
+    (all) => all.filter((r) => r.companyId === referrerCompany.id),
+  );
   const existing = creditRows[0];
   const current = existing?.credits ?? 0;
   if (existing) {
@@ -406,31 +429,27 @@ export interface ReferralStats {
 export async function myStats(db: Db, userId: string): Promise<ReferralStats> {
   const code = await ensureReferralCode(db, userId);
 
-  const invitedRows = await (
-    db.select().from(referrals).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof referrals.$inferSelect)[]>
-  )(eq(referrals.referrerUserId, userId));
+  const invitedRows = await selectWhere<typeof referrals.$inferSelect>(
+    db,
+    referrals,
+    eq(referrals.referrerUserId, userId),
+    (all) => all.filter((r) => r.referrerUserId === userId),
+  );
   const invited = invitedRows.length;
   const paid = invitedRows.filter((r) => r.referrerFirstPaidBonusGranted).length;
   const subscribed = invitedRows.filter((r) => r.referrerSubBonusGranted).length;
 
-  let creditsEarned = 0;
-  try {
-    const allRewards = await (
-      db.select().from(referralRewards).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof referralRewards.$inferSelect)[]>
-    )(eq(referralRewards.referrerUserId, userId));
-    creditsEarned = allRewards.reduce((sum, rr) => sum + (rr.creditsGranted ?? 0), 0);
-  } catch {
-    creditsEarned = 0;
-  }
+  const allRewards = await selectWhere<typeof referralRewards.$inferSelect>(
+    db,
+    referralRewards,
+    eq(referralRewards.referrerUserId, userId),
+    (all) => all.filter((r) => r.referrerUserId === userId),
+  );
+  const creditsEarned = allRewards.reduce((sum, rr) => sum + (rr.creditsGranted ?? 0), 0);
 
   const monthlyUsed = await rewardsUsedThisMonth(db, userId);
   const lifetimeUsed = await rewardsUsedLifetime(db, userId);
 
-  // recent 10 sorted by createdAt desc
   const sorted = [...invitedRows].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
