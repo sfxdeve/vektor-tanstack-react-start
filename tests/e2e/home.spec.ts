@@ -5,7 +5,8 @@ test("home page renders the scaffold", async ({ page }) => {
   await page.goto("/");
 
   await expect(page).toHaveTitle("Vektor");
-  await expect(page.getByRole("heading", { name: "TanStack Start is ready." })).toBeVisible();
+  await expect(page.getByTestId("landing-hero")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Never lose a bid/ })).toBeVisible();
 });
 
 test("home page has no accessibility violations", async ({ page }) => {

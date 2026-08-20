@@ -10,11 +10,75 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SetupRouteImport } from './routes/setup'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
+import { Route as ApiCompaniesCompanyIdRouteImport } from './routes/api/companies/$companyId'
+import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
+import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -22,31 +86,157 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCompaniesIndexRoute = ApiCompaniesIndexRouteImport.update({
+  id: '/api/companies/',
+  path: '/api/companies/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCompaniesCompanyIdRoute = ApiCompaniesCompanyIdRouteImport.update({
+  id: '/api/companies/$companyId',
+  path: '/api/companies/$companyId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReferenceBargainingCouncilsRoute =
+  ApiReferenceBargainingCouncilsRouteImport.update({
+    id: '/api/reference/bargaining-councils',
+    path: '/api/reference/bargaining-councils',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
+  id: '/api/verify/statutory',
+  path: '/api/verify/statutory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
+  '/api/companies/': typeof ApiCompaniesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
+  '/api/companies': typeof ApiCompaniesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
+  '/app': typeof AppRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/setup': typeof SetupRoute
+  '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
+  '/api/companies/': typeof ApiCompaniesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/login'
+    | '/privacy'
+    | '/reset-password'
+    | '/setup'
+    | '/signup'
+    | '/terms'
+    | '/api/auth/$'
+    | '/api/companies/$companyId'
+    | '/api/reference/bargaining-councils'
+    | '/api/verify/statutory'
+    | '/api/companies/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/auth/$'
+  to:
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/login'
+    | '/privacy'
+    | '/reset-password'
+    | '/setup'
+    | '/signup'
+    | '/terms'
+    | '/api/auth/$'
+    | '/api/companies/$companyId'
+    | '/api/reference/bargaining-councils'
+    | '/api/verify/statutory'
+    | '/api/companies'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/admin'
+    | '/app'
+    | '/forgot-password'
+    | '/login'
+    | '/privacy'
+    | '/reset-password'
+    | '/setup'
+    | '/signup'
+    | '/terms'
+    | '/api/auth/$'
+    | '/api/companies/$companyId'
+    | '/api/reference/bargaining-councils'
+    | '/api/verify/statutory'
+    | '/api/companies/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
+  AppRoute: typeof AppRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  SetupRoute: typeof SetupRoute
+  SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
+  ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
+  ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
+  ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +248,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -65,12 +325,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/companies/': {
+      id: '/api/companies/'
+      path: '/api/companies'
+      fullPath: '/api/companies/'
+      preLoaderRoute: typeof ApiCompaniesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/companies/$companyId': {
+      id: '/api/companies/$companyId'
+      path: '/api/companies/$companyId'
+      fullPath: '/api/companies/$companyId'
+      preLoaderRoute: typeof ApiCompaniesCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reference/bargaining-councils': {
+      id: '/api/reference/bargaining-councils'
+      path: '/api/reference/bargaining-councils'
+      fullPath: '/api/reference/bargaining-councils'
+      preLoaderRoute: typeof ApiReferenceBargainingCouncilsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/verify/statutory': {
+      id: '/api/verify/statutory'
+      path: '/api/verify/statutory'
+      fullPath: '/api/verify/statutory'
+      preLoaderRoute: typeof ApiVerifyStatutoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
+  AppRoute: AppRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SetupRoute: SetupRoute,
+  SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
+  ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
+  ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
+  ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

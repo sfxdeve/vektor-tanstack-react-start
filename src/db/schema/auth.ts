@@ -11,6 +11,9 @@ export const user = sqliteTable(
     role: text("role", { enum: ["admin", "user"] })
       .notNull()
       .default("user"),
+    banned: integer("banned", { mode: "boolean" }).default(false),
+    banReason: text("banReason"),
+    banExpires: integer("banExpires", { mode: "timestamp" }),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
   },
@@ -28,6 +31,7 @@ export const session = sqliteTable("session", {
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  impersonatedBy: text("impersonatedBy"),
 });
 
 export const account = sqliteTable(

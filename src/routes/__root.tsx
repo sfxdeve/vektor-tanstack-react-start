@@ -4,6 +4,8 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
+
 import styles from "@/styles.css?url";
 
 interface RouterContext {
@@ -31,6 +33,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster position="bottom-right" />
         {import.meta.env.DEV ? (
           <TanStackDevtools
             config={{ position: "bottom-right" }}
