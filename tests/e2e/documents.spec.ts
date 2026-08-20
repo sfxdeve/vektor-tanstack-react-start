@@ -172,7 +172,7 @@ test.describe("Compliance Document Vault", () => {
   });
 
   test("document vault has no accessibility violations", async ({ page }) => {
-    const email = uniqueEmail("vaultA11y");
+    const email = uniqueEmail("vault-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
     await page.getByTestId("input-name").fill("A11y User");
@@ -180,12 +180,14 @@ test.describe("Compliance Document Vault", () => {
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
+    await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
+    await page.waitForTimeout(500);
     await page.goto("/setup");
     await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("input-company-name").fill("A11y Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
-    await page.waitForTimeout(1500);
+    await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
     await page.goto("/documents");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();
