@@ -24,6 +24,12 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminCompaniesRouteImport } from './routes/admin.companies'
+import { Route as AdminEftRouteImport } from './routes/admin.eft'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ApiAdminCompaniesRouteImport } from './routes/api/admin/companies'
+import { Route as ApiAdminStatsRouteImport } from './routes/api/admin/stats'
+import { Route as ApiAdminUsersRouteImport } from './routes/api/admin/users'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingPackagesRouteImport } from './routes/api/billing/packages'
 import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
@@ -44,6 +50,9 @@ import { Route as ApiTenderTenderIdRouteImport } from './routes/api/tender/$tend
 import { Route as ApiTendersCompanyIdRouteImport } from './routes/api/tenders/$companyId'
 import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/analyze'
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
+import { Route as ApiAdminCompaniesCompanyIdRouteImport } from './routes/api/admin/companies/$companyId'
+import { Route as ApiAdminImpersonateUserIdRouteImport } from './routes/api/admin/impersonate/$userId'
+import { Route as ApiAdminUsersUserIdRouteImport } from './routes/api/admin/users/$userId'
 import { Route as ApiBillingCreditsCompanyIdRouteImport } from './routes/api/billing/credits/$companyId'
 import { Route as ApiDocumentsCompanyCompanyIdRouteImport } from './routes/api/documents/company/$companyId'
 import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
@@ -130,6 +139,36 @@ const SignupRoute = SignupRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEftRoute = AdminEftRouteImport.update({
+  id: '/eft',
+  path: '/eft',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiAdminCompaniesRoute = ApiAdminCompaniesRouteImport.update({
+  id: '/api/admin/companies',
+  path: '/api/admin/companies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminStatsRoute = ApiAdminStatsRouteImport.update({
+  id: '/api/admin/stats',
+  path: '/api/admin/stats',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminUsersRoute = ApiAdminUsersRouteImport.update({
+  id: '/api/admin/users',
+  path: '/api/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -234,6 +273,23 @@ const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
   path: '/api/verify/statutory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminCompaniesCompanyIdRoute =
+  ApiAdminCompaniesCompanyIdRouteImport.update({
+    id: '/$companyId',
+    path: '/$companyId',
+    getParentRoute: () => ApiAdminCompaniesRoute,
+  } as any)
+const ApiAdminImpersonateUserIdRoute =
+  ApiAdminImpersonateUserIdRouteImport.update({
+    id: '/api/admin/impersonate/$userId',
+    path: '/api/admin/impersonate/$userId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAdminUsersUserIdRoute = ApiAdminUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => ApiAdminUsersRoute,
+} as any)
 const ApiBillingCreditsCompanyIdRoute =
   ApiBillingCreditsCompanyIdRouteImport.update({
     id: '/api/billing/credits/$companyId',
@@ -306,7 +362,7 @@ const ApiTenderTenderIdReturnablesToggleRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/billing': typeof BillingRoute
@@ -319,6 +375,12 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/eft': typeof AdminEftRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/admin/companies': typeof ApiAdminCompaniesRouteWithChildren
+  '/api/admin/stats': typeof ApiAdminStatsRoute
+  '/api/admin/users': typeof ApiAdminUsersRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
@@ -339,6 +401,9 @@ export interface FileRoutesByFullPath {
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/admin/companies/$companyId': typeof ApiAdminCompaniesCompanyIdRoute
+  '/api/admin/impersonate/$userId': typeof ApiAdminImpersonateUserIdRoute
+  '/api/admin/users/$userId': typeof ApiAdminUsersUserIdRoute
   '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
@@ -355,7 +420,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/billing': typeof BillingRoute
@@ -368,6 +433,12 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/eft': typeof AdminEftRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/admin/companies': typeof ApiAdminCompaniesRouteWithChildren
+  '/api/admin/stats': typeof ApiAdminStatsRoute
+  '/api/admin/users': typeof ApiAdminUsersRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
@@ -388,6 +459,9 @@ export interface FileRoutesByTo {
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies': typeof ApiCompaniesIndexRoute
+  '/api/admin/companies/$companyId': typeof ApiAdminCompaniesCompanyIdRoute
+  '/api/admin/impersonate/$userId': typeof ApiAdminImpersonateUserIdRoute
+  '/api/admin/users/$userId': typeof ApiAdminUsersUserIdRoute
   '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
@@ -405,7 +479,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/billing': typeof BillingRoute
@@ -418,6 +492,12 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/eft': typeof AdminEftRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/admin/companies': typeof ApiAdminCompaniesRouteWithChildren
+  '/api/admin/stats': typeof ApiAdminStatsRoute
+  '/api/admin/users': typeof ApiAdminUsersRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
@@ -438,6 +518,9 @@ export interface FileRoutesById {
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/admin/companies/$companyId': typeof ApiAdminCompaniesCompanyIdRoute
+  '/api/admin/impersonate/$userId': typeof ApiAdminImpersonateUserIdRoute
+  '/api/admin/users/$userId': typeof ApiAdminUsersUserIdRoute
   '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
@@ -469,6 +552,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signup'
     | '/terms'
+    | '/admin/companies'
+    | '/admin/eft'
+    | '/admin/users'
+    | '/api/admin/companies'
+    | '/api/admin/stats'
+    | '/api/admin/users'
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
@@ -489,6 +578,9 @@ export interface FileRouteTypes {
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/admin/companies/$companyId'
+    | '/api/admin/impersonate/$userId'
+    | '/api/admin/users/$userId'
     | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
@@ -518,6 +610,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signup'
     | '/terms'
+    | '/admin/companies'
+    | '/admin/eft'
+    | '/admin/users'
+    | '/api/admin/companies'
+    | '/api/admin/stats'
+    | '/api/admin/users'
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
@@ -538,6 +636,9 @@ export interface FileRouteTypes {
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies'
+    | '/api/admin/companies/$companyId'
+    | '/api/admin/impersonate/$userId'
+    | '/api/admin/users/$userId'
     | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
@@ -567,6 +668,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signup'
     | '/terms'
+    | '/admin/companies'
+    | '/admin/eft'
+    | '/admin/users'
+    | '/api/admin/companies'
+    | '/api/admin/stats'
+    | '/api/admin/users'
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
@@ -587,6 +694,9 @@ export interface FileRouteTypes {
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/admin/companies/$companyId'
+    | '/api/admin/impersonate/$userId'
+    | '/api/admin/users/$userId'
     | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
@@ -604,7 +714,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AnalyzeRoute: typeof AnalyzeRoute
   AppRoute: typeof AppRoute
   BillingRoute: typeof BillingRoute
@@ -617,6 +727,9 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
+  ApiAdminCompaniesRoute: typeof ApiAdminCompaniesRouteWithChildren
+  ApiAdminStatsRoute: typeof ApiAdminStatsRoute
+  ApiAdminUsersRoute: typeof ApiAdminUsersRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingPackagesRoute: typeof ApiBillingPackagesRoute
   ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
@@ -637,6 +750,7 @@ export interface RootRouteChildren {
   ApiTendersAnalyzeRoute: typeof ApiTendersAnalyzeRoute
   ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
   ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
+  ApiAdminImpersonateUserIdRoute: typeof ApiAdminImpersonateUserIdRoute
   ApiBillingCreditsCompanyIdRoute: typeof ApiBillingCreditsCompanyIdRoute
   ApiDocumentsCompanyCompanyIdRoute: typeof ApiDocumentsCompanyCompanyIdRoute
   ApiDocumentsDownloadDocIdRoute: typeof ApiDocumentsDownloadDocIdRoute
@@ -752,6 +866,48 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/companies': {
+      id: '/admin/companies'
+      path: '/companies'
+      fullPath: '/admin/companies'
+      preLoaderRoute: typeof AdminCompaniesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/eft': {
+      id: '/admin/eft'
+      path: '/eft'
+      fullPath: '/admin/eft'
+      preLoaderRoute: typeof AdminEftRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/admin/companies': {
+      id: '/api/admin/companies'
+      path: '/api/admin/companies'
+      fullPath: '/api/admin/companies'
+      preLoaderRoute: typeof ApiAdminCompaniesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/stats': {
+      id: '/api/admin/stats'
+      path: '/api/admin/stats'
+      fullPath: '/api/admin/stats'
+      preLoaderRoute: typeof ApiAdminStatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/users': {
+      id: '/api/admin/users'
+      path: '/api/admin/users'
+      fullPath: '/api/admin/users'
+      preLoaderRoute: typeof ApiAdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -894,6 +1050,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVerifyStatutoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/companies/$companyId': {
+      id: '/api/admin/companies/$companyId'
+      path: '/$companyId'
+      fullPath: '/api/admin/companies/$companyId'
+      preLoaderRoute: typeof ApiAdminCompaniesCompanyIdRouteImport
+      parentRoute: typeof ApiAdminCompaniesRoute
+    }
+    '/api/admin/impersonate/$userId': {
+      id: '/api/admin/impersonate/$userId'
+      path: '/api/admin/impersonate/$userId'
+      fullPath: '/api/admin/impersonate/$userId'
+      preLoaderRoute: typeof ApiAdminImpersonateUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/users/$userId': {
+      id: '/api/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/api/admin/users/$userId'
+      preLoaderRoute: typeof ApiAdminUsersUserIdRouteImport
+      parentRoute: typeof ApiAdminUsersRoute
+    }
     '/api/billing/credits/$companyId': {
       id: '/api/billing/credits/$companyId'
       path: '/api/billing/credits/$companyId'
@@ -981,6 +1158,43 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminCompaniesRoute: typeof AdminCompaniesRoute
+  AdminEftRoute: typeof AdminEftRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminCompaniesRoute: AdminCompaniesRoute,
+  AdminEftRoute: AdminEftRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface ApiAdminCompaniesRouteChildren {
+  ApiAdminCompaniesCompanyIdRoute: typeof ApiAdminCompaniesCompanyIdRoute
+}
+
+const ApiAdminCompaniesRouteChildren: ApiAdminCompaniesRouteChildren = {
+  ApiAdminCompaniesCompanyIdRoute: ApiAdminCompaniesCompanyIdRoute,
+}
+
+const ApiAdminCompaniesRouteWithChildren =
+  ApiAdminCompaniesRoute._addFileChildren(ApiAdminCompaniesRouteChildren)
+
+interface ApiAdminUsersRouteChildren {
+  ApiAdminUsersUserIdRoute: typeof ApiAdminUsersUserIdRoute
+}
+
+const ApiAdminUsersRouteChildren: ApiAdminUsersRouteChildren = {
+  ApiAdminUsersUserIdRoute: ApiAdminUsersUserIdRoute,
+}
+
+const ApiAdminUsersRouteWithChildren = ApiAdminUsersRoute._addFileChildren(
+  ApiAdminUsersRouteChildren,
+)
+
 interface ApiEftRequestRouteChildren {
   ApiEftRequestPaymentIdRoute: typeof ApiEftRequestPaymentIdRoute
 }
@@ -1012,7 +1226,7 @@ const ApiTenderTenderIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AnalyzeRoute: AnalyzeRoute,
   AppRoute: AppRoute,
   BillingRoute: BillingRoute,
@@ -1025,6 +1239,9 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
+  ApiAdminCompaniesRoute: ApiAdminCompaniesRouteWithChildren,
+  ApiAdminStatsRoute: ApiAdminStatsRoute,
+  ApiAdminUsersRoute: ApiAdminUsersRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingPackagesRoute: ApiBillingPackagesRoute,
   ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
@@ -1045,6 +1262,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTendersAnalyzeRoute: ApiTendersAnalyzeRoute,
   ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
   ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
+  ApiAdminImpersonateUserIdRoute: ApiAdminImpersonateUserIdRoute,
   ApiBillingCreditsCompanyIdRoute: ApiBillingCreditsCompanyIdRoute,
   ApiDocumentsCompanyCompanyIdRoute: ApiDocumentsCompanyCompanyIdRoute,
   ApiDocumentsDownloadDocIdRoute: ApiDocumentsDownloadDocIdRoute,
