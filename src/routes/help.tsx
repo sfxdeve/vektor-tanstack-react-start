@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
-import { Card, CardContent } from "@/components/ui/card";
 import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/help")({
@@ -680,7 +679,3 @@ function HelpPage() {
     </div>
   );
 }
-
-// Keep unused import referenced to satisfy linter while allowing Card usage in future slots
-void Card;
-void CardContent;

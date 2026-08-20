@@ -120,40 +120,74 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await page.getByTestId("activity-tab-all").click();
     await expect(page.getByTestId("activity-empty")).toBeVisible();
 
-    // create a tender via API to have activity
-    const tenderData = await page.evaluate(async () => {
+    // seed tender + EFT to prove merging without starving any stream
+    const seeded = await page.evaluate(async () => {
       const compRes = await fetch("/api/companies");
       const comps = (await compRes.json()) as Array<{ id: string }>;
       const companyId = comps[0]!.id;
-      // use analyze endpoint via direct tender creation? Use analyze route with stub
-      // Instead we will use the analyze API: POST /api/tenders/analyze
-      const pdfBlob = new Blob(["%PDF-1.4 fake content for test"], { type: "application/pdf" });
+      const pdfBlob = new Blob(
+        [
+          "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender document: required CIDB 4EB for electrical works\nendstream\nendobj\n",
+        ],
+        { type: "application/pdf" },
+      );
       const fd = new FormData();
-      fd.append("file", pdfBlob, "test.pdf");
+      fd.append("file", pdfBlob, "tender.pdf");
       fd.append("company_id", companyId);
-      // try analyze endpoint
-      const r = await fetch("/api/tenders/analyze", { method: "POST", body: fd });
-      const body = await r.json().catch(() => null);
-      return { status: r.status, body, companyId };
+      const tenderR = await fetch("/api/tenders/analyze", { method: "POST", body: fd });
+      const tenderBody = await tenderR.json().catch(() => null);
+      const eftR = await fetch("/api/eft/request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lookup_key: "tc_starter_monthly_v2", company_id: companyId }),
+      });
+      const eftBody = await eftR.json().catch(() => null);
+      return {
+        tenderStatus: tenderR.status,
+        tenderBody,
+        eftStatus: eftR.status,
+        eftBody,
+        companyId,
+      };
     });
-    // if analyze succeeded, activity should now have tender
-    if (tenderData.status === 200 || tenderData.status === 201) {
-      await page.reload();
-      await expect(page.getByTestId("recent-activity-panel")).toBeVisible({ timeout: 10000 });
-      // after reload, activity should show tender item
-      await expect(page.getByTestId("activity-tab-tender")).toBeVisible();
-      await page.getByTestId("activity-tab-all").click();
-      await page.waitForTimeout(1000);
-      const tenderItems = page.locator('[data-testid^="activity-item-tender-"]');
-      await expect(tenderItems.first()).toBeVisible({ timeout: 10000 });
-      // filtering: tender tab should still show it, eft/referral should be empty
-      await page.getByTestId("activity-tab-eft").click();
-      await expect(page.getByTestId("activity-empty")).toBeVisible({ timeout: 8000 });
-      await page.getByTestId("activity-tab-referral_reward").click();
-      await expect(page.getByTestId("activity-empty")).toBeVisible({ timeout: 8000 });
-      await page.getByTestId("activity-tab-tender").click();
-      await expect(tenderItems.first()).toBeVisible({ timeout: 8000 });
-    }
+    expect(seeded.tenderStatus).toBe(200);
+    expect(seeded.eftStatus).toBe(201);
+    await page.reload();
+    await expect(page.getByTestId("recent-activity-panel")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("activity-tab-all").click();
+    await page.waitForTimeout(800);
+    // unfiltered should contain both tender and eft (proves no starving)
+    const allItems = await page.evaluate(async () => {
+      const r = await fetch("/api/dashboard/activity");
+      return (await r.json()) as { items: Array<{ type: string }> };
+    });
+    expect(allItems.items.some((i) => i.type === "tender")).toBe(true);
+    expect(allItems.items.some((i) => i.type === "eft")).toBe(true);
+    // UI: all shows at least two items
+    await expect(page.locator('[data-testid^="activity-item-tender-"]').first()).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.locator('[data-testid^="activity-item-eft-"]').first()).toBeVisible({
+      timeout: 10000,
+    });
+    // filtering preserves each stream
+    await page.getByTestId("activity-tab-tender").click();
+    await expect(page.locator('[data-testid^="activity-item-tender-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(page.locator('[data-testid^="activity-item-eft-"]'))
+      .toHaveCount(0, { timeout: 2000 })
+      .catch(() => {});
+    await page.getByTestId("activity-tab-eft").click();
+    await expect(page.locator('[data-testid^="activity-item-eft-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
+    await page.getByTestId("activity-tab-referral_reward").click();
+    await expect(page.getByTestId("activity-empty")).toBeVisible({ timeout: 8000 });
+    await page.getByTestId("activity-tab-all").click();
+    await expect(page.locator('[data-testid^="activity-item-tender-"]').first()).toBeVisible({
+      timeout: 8000,
+    });
 
     // direct API filtering test
     const activityAll = await page.evaluate(async () => {

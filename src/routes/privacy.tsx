@@ -248,7 +248,9 @@ function PrivacyPage() {
             data-testid="privacy-section-bargaining"
             className="mt-10 scroll-mt-8"
           >
-            <h2 className="text-xl font-bold tracking-tight">Compliance Context & Verification</h2>
+            <h2 className="text-xl font-bold tracking-tight">
+              Bargaining Council Compliance & Verification
+            </h2>
             <p>
               When you use Vektor to check CIDB, bargaining council, or statutory compliance, you
               remain responsible for verifying facts at the official sources. For your convenience

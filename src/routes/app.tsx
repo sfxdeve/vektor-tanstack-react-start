@@ -36,24 +36,75 @@ function currencyRand(n: unknown): string {
   return "—";
 }
 
-type ActivityItem = {
-  type: string;
+// Discriminated union — avoids Primitive Obsession on stringly-typed activity items
+type TenderActivity = {
+  type: "tender";
   id: string;
   created_at: string;
-  title?: string;
+  title: string;
   issuing_entity?: string | null;
   fit_score?: number | null;
   verdict?: string;
-  reference?: string;
-  plan_name?: string;
-  amount?: number;
-  status?: string;
-  credits_granted?: number;
+};
+type EftActivity = {
+  type: "eft";
+  id: string;
+  created_at: string;
+  reference: string;
+  plan_name: string;
+  amount: number;
+  status: string;
+};
+type ReferralActivity = {
+  type: "referral_reward";
+  id: string;
+  created_at: string;
+  credits_granted: number;
   plan_lookup_key?: string | null;
   trigger_reference?: string | null;
 };
+type ActivityItem = TenderActivity | EftActivity | ReferralActivity;
 
-function TenderRow({ item, onOpen }: { item: ActivityItem; onOpen: () => void }) {
+function ActivityRowShell({
+  testId,
+  icon,
+  onOpen,
+  title,
+  badge,
+  subtitle,
+}: {
+  testId: string;
+  icon: React.ReactNode;
+  onOpen: () => void;
+  title: React.ReactNode;
+  badge?: React.ReactNode;
+  subtitle: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      data-testid={testId}
+      className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-zinc-50"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-zinc-900">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-semibold text-zinc-900">{title}</p>
+          {badge}
+        </div>
+        <p className="mt-0.5 truncate text-xs text-zinc-500">{subtitle}</p>
+      </div>
+      <span className="shrink-0 text-zinc-400" aria-hidden>
+        →
+      </span>
+    </button>
+  );
+}
+
+function TenderRow({ item, onOpen }: { item: TenderActivity; onOpen: () => void }) {
   const verdict = item.verdict || "UNKNOWN";
   const badgeClass =
     verdict === "GO"
@@ -64,38 +115,28 @@ function TenderRow({ item, onOpen }: { item: ActivityItem; onOpen: () => void })
           ? "bg-red-100 text-red-800"
           : "bg-zinc-100 text-zinc-800";
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-testid={`activity-item-tender-${item.id}`}
-      className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-zinc-50"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-zinc-900">
-        <span className="text-[11px] font-bold text-white">T</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-semibold text-zinc-900">
-            {item.title || "Untitled tender"}
-          </p>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badgeClass}`}
-          >
-            {verdict}
-            {typeof item.fit_score === "number" && (
-              <span className="opacity-70">· {item.fit_score}%</span>
-            )}
-          </span>
-        </div>
-        <p className="mt-0.5 truncate text-xs text-zinc-500">
+    <ActivityRowShell
+      testId={`activity-item-tender-${item.id}`}
+      icon={<span className="text-[11px] font-bold text-white">T</span>}
+      onOpen={onOpen}
+      title={item.title || "Untitled tender"}
+      badge={
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${badgeClass}`}
+        >
+          {verdict}
+          {typeof item.fit_score === "number" && (
+            <span className="opacity-70">· {item.fit_score}%</span>
+          )}
+        </span>
+      }
+      subtitle={
+        <>
           {item.issuing_entity ? `${item.issuing_entity} · ` : ""}Tender analysis ·{" "}
           {timeAgo(item.created_at)}
-        </p>
-      </div>
-      <span className="shrink-0 text-zinc-400" aria-hidden>
-        →
-      </span>
-    </button>
+        </>
+      }
+    />
   );
 }
 
@@ -113,41 +154,39 @@ const TONE_CLASS: Record<string, string> = {
   zinc: "bg-zinc-100 text-zinc-800",
 };
 
-function EftRow({ item, onOpen }: { item: ActivityItem; onOpen: () => void }) {
+function EftRow({ item, onOpen }: { item: EftActivity; onOpen: () => void }) {
   const meta = EFT_STATUS_META[item.status || ""] || { label: item.status || "—", tone: "zinc" };
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-testid={`activity-item-eft-${item.id}`}
-      className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-zinc-50"
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-teal-600">
-        <span className="text-[11px] font-bold text-white">R</span>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-semibold text-zinc-900">
-            {item.plan_name} · {currencyRand(item.amount)}
-          </p>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${TONE_CLASS[meta.tone]}`}
-          >
-            {meta.label}
-          </span>
-        </div>
-        <p className="mt-0.5 truncate font-mono text-xs text-zinc-500">
+    <ActivityRowShell
+      testId={`activity-item-eft-${item.id}`}
+      icon={
+        <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-teal-600 text-[11px] font-bold text-white">
+          R
+        </span>
+      }
+      onOpen={onOpen}
+      title={
+        <>
+          {item.plan_name} · {currencyRand(item.amount)}
+        </>
+      }
+      badge={
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${TONE_CLASS[meta.tone]}`}
+        >
+          {meta.label}
+        </span>
+      }
+      subtitle={
+        <span className="font-mono">
           {item.reference} · EFT payment · {timeAgo(item.created_at)}
-        </p>
-      </div>
-      <span className="shrink-0 text-zinc-400" aria-hidden>
-        →
-      </span>
-    </button>
+        </span>
+      }
+    />
   );
 }
 
-function ReferralRow({ item, onOpen }: { item: ActivityItem; onOpen: () => void }) {
+function ReferralRow({ item, onOpen }: { item: ReferralActivity; onOpen: () => void }) {
   return (
     <button
       type="button"
@@ -298,7 +337,7 @@ function RecentActivityPanel({ navigate }: { navigate: ReturnType<typeof useNavi
                 return (
                   <TenderRow
                     key={`t-${it.id}`}
-                    item={it}
+                    item={it as TenderActivity}
                     onOpen={() => void navigate({ to: "/analyze" })}
                   />
                 );
@@ -307,7 +346,7 @@ function RecentActivityPanel({ navigate }: { navigate: ReturnType<typeof useNavi
                 return (
                   <EftRow
                     key={`e-${it.id}`}
-                    item={it}
+                    item={it as EftActivity}
                     onOpen={() => void navigate({ to: "/billing" })}
                   />
                 );
@@ -316,7 +355,7 @@ function RecentActivityPanel({ navigate }: { navigate: ReturnType<typeof useNavi
                 return (
                   <ReferralRow
                     key={`r-${it.id}`}
-                    item={it}
+                    item={it as ReferralActivity}
                     onOpen={() => void navigate({ to: "/billing" })}
                   />
                 );
@@ -400,7 +439,7 @@ function AppPage() {
     }
   }, [session, isPending, navigate]);
 
-  const fetchCompanyData = useCallback(async (companyId: string) => {
+  const loadCompanyBundle = useCallback(async (companyId: string) => {
     try {
       const [tendersRes, docsRes, creditsRes] = await Promise.all([
         fetch(`/api/tenders/${companyId}`).then((r) => (r.ok ? r.json() : [])),
@@ -440,7 +479,7 @@ function AppPage() {
         }
         const first = (list[0] as Record<string, unknown> | undefined)?.id as string | undefined;
         if (first) {
-          await fetchCompanyData(first);
+          await loadCompanyBundle(first);
         } else {
           setTenders([]);
           setDocuments([]);
@@ -455,7 +494,7 @@ function AppPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, fetchCompanyData]);
+  }, [session, loadCompanyBundle]);
 
   if (isPending) {
     return (
@@ -625,13 +664,13 @@ function AppPage() {
             </div>
           )}
 
-          {/* Stats Grid — Swiss high-contrast technical cards */}
+          {/* Stats Grid — Swiss high-contrast technical cards with grid borders */}
           <div
             className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6 lg:grid-cols-4"
             data-testid="dashboard-stats-grid"
           >
             <Card
-              className="rounded-sm border-zinc-200 bg-white p-6 shadow-none"
+              className="grid-border-item rounded-sm border-zinc-200 bg-white p-6 shadow-none"
               data-testid="stat-bbbee"
             >
               <p
@@ -650,7 +689,7 @@ function AppPage() {
             </Card>
 
             <Card
-              className="rounded-sm border-zinc-200 bg-white p-6 shadow-none"
+              className="grid-border-item rounded-sm border-zinc-200 bg-white p-6 shadow-none"
               data-testid="dashboard-card-bbbee"
               aria-hidden
             >
@@ -663,7 +702,7 @@ function AppPage() {
             </Card>
 
             <Card
-              className="rounded-sm border-zinc-200 bg-white p-6 shadow-none"
+              className="grid-border-item rounded-sm border-zinc-200 bg-white p-6 shadow-none"
               data-testid="dashboard-card-cidb"
             >
               <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">CIDB</p>
@@ -693,7 +732,7 @@ function AppPage() {
             </Card>
 
             <Card
-              className="rounded-sm border-zinc-200 bg-white p-6 shadow-none"
+              className="grid-border-item rounded-sm border-zinc-200 bg-white p-6 shadow-none"
               data-testid="dashboard-card-compliance"
             >
               <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
@@ -729,7 +768,7 @@ function AppPage() {
             </Card>
 
             <Card
-              className="rounded-sm border-zinc-200 bg-white p-6 shadow-none"
+              className="grid-border-item rounded-sm border-zinc-200 bg-white p-6 shadow-none"
               data-testid="dashboard-card-avg-score"
             >
               <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
