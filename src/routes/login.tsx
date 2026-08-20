@@ -37,7 +37,7 @@ function LoginPage() {
         | undefined;
       if (data?.requirePasswordChange) {
         toast.info("An admin reset your password — pick a new one to continue.");
-        navigate({
+        await navigate({
           to: "/reset-password",
           search: { token: data.resetToken ?? "", reason: data.reason } as never,
         });
@@ -48,9 +48,9 @@ function LoginPage() {
       const session = await authClient.getSession();
       const role = (session?.data?.user as unknown as { role?: string })?.role;
       if (role === "admin") {
-        navigate({ to: "/admin" });
+        await navigate({ to: "/admin" });
       } else {
-        navigate({ to: "/app" });
+        await navigate({ to: "/app" });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Login failed";

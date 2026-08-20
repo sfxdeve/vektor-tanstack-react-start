@@ -1,3 +1,4 @@
+// oxlint-disable react/set-state-in-effect
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ export function Sidebar() {
   );
   const mobileTopbarTopClass = isImpersonating ? "top-[38px]" : "top-0";
 
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -137,7 +139,7 @@ export function Sidebar() {
                 onClick={async () => {
                   await authClient.signOut();
                   toast.success("Signed out");
-                  navigate({ to: "/login" });
+                  await navigate({ to: "/login" });
                 }}
                 aria-label="Sign out"
                 title="Sign out"

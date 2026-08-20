@@ -71,7 +71,7 @@ function SignupPage() {
         },
       );
       toast.success("Account created — welcome to Vektor");
-      navigate({ to: "/app" });
+      await navigate({ to: "/app" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Signup failed";
       // already toasted

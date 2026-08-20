@@ -19,9 +19,9 @@ function LandingPage() {
       const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
         ?.impersonatedBy;
       if (role === "admin" && !impersonatedBy) {
-        navigate({ to: "/admin" });
+        void navigate({ to: "/admin" });
       } else {
-        navigate({ to: "/app" });
+        void navigate({ to: "/app" });
       }
     }
   }, [session, isPending, navigate]);

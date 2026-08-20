@@ -1,3 +1,4 @@
+// oxlint-disable react/set-state-in-effect
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ function VerificationBadge({
 }) {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
 
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     const val = (value || "").trim();
     if (!val) {
@@ -294,18 +296,19 @@ function SetupPage() {
   useEffect(() => {
     if (isPending) return;
     if (!session?.user) {
-      navigate({ to: "/login" });
+      void navigate({ to: "/login" });
       return;
     }
     const role = (session.user as unknown as { role?: string }).role;
     const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
       ?.impersonatedBy;
     if (role === "admin" && !impersonatedBy) {
-      navigate({ to: "/admin" });
+      void navigate({ to: "/admin" });
       return;
     }
   }, [session, isPending, navigate]);
 
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     fetch("/api/reference/bargaining-councils")
       .then((r) => r.json())
@@ -313,6 +316,7 @@ function SetupPage() {
       .catch(() => setCouncilCatalog([]));
   }, []);
 
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     if (!session?.user) return;
     fetch("/api/companies")
@@ -324,6 +328,7 @@ function SetupPage() {
       .catch(() => setCompanies([]));
   }, [session]);
 
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     if (!selectedCompany) return;
     setFormData({
@@ -413,7 +418,7 @@ function SetupPage() {
         const created = await res.json();
         setCompanies([created as Record<string, unknown>]);
         toast.success("Company profile created successfully!");
-        setTimeout(() => navigate({ to: "/app" }), 1200);
+        setTimeout(() => void navigate({ to: "/app" }), 1200);
       }
     } catch (error) {
       const msg =
@@ -449,7 +454,7 @@ function SetupPage() {
           <Button
             data-testid="back-btn"
             variant="ghost"
-            onClick={() => navigate({ to: "/app" })}
+            onClick={() => void navigate({ to: "/app" })}
             className="-ml-2 mb-4"
           >
             ← Back to Dashboard

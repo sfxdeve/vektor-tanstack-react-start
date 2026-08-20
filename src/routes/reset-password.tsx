@@ -52,7 +52,7 @@ function ResetPasswordPage() {
         throw new Error(msg);
       }
       toast.success("Password updated — you can now sign in.");
-      navigate({ to: "/login" });
+      await navigate({ to: "/login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
     } finally {

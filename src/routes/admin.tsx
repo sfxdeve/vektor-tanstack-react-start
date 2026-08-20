@@ -15,14 +15,14 @@ function AdminPage() {
   useEffect(() => {
     if (isPending) return;
     if (!session?.user) {
-      navigate({ to: "/login" });
+      void navigate({ to: "/login" });
       return;
     }
     const role = (session.user as unknown as { role?: string }).role;
     const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
       ?.impersonatedBy;
     if (role !== "admin" || impersonatedBy) {
-      navigate({ to: "/app" });
+      void navigate({ to: "/app" });
     }
   }, [session, isPending, navigate]);
 
