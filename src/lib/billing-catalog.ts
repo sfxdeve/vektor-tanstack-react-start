@@ -79,6 +79,8 @@ export const CATALOG: CatalogEntry[] = [
   },
 ];
 
+export type LookupKey = (typeof CATALOG)[number]["lookup_key"];
+
 export function entryByLookup(lookupKey: string): CatalogEntry | undefined {
   return CATALOG.find((e) => e.lookup_key === lookupKey);
 }

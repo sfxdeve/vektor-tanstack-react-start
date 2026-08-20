@@ -1,14 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { eftPayments } from "@/db/schema/eft";
+import { eq } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/eft/request/$paymentId")({
@@ -32,7 +27,8 @@ export const Route = createFileRoute("/api/eft/request/$paymentId")({
         )(eq(eftPayments.id, paymentId));
         const payment = rows[0];
         if (!payment) {
-          return new Response(JSON.stringify({ status: "not_found" }), {
+          return new Response(JSON.stringify({ detail: "Payment not found" }), {
+            status: 404,
             headers: { "content-type": "application/json" },
           });
         }
@@ -42,7 +38,6 @@ export const Route = createFileRoute("/api/eft/request/$paymentId")({
             headers: { "content-type": "application/json" },
           });
         }
-        // Allow cancellation from awaiting_proof or pending_review per spec (old allowed only awaiting_proof)
         if (payment.status !== "awaiting_proof" && payment.status !== "pending_review") {
           return new Response(
             JSON.stringify({ detail: `Cannot cancel a ${payment.status} payment` }),

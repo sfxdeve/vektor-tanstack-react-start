@@ -1,45 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { companyCredits } from "@/db/schema/credits";
 import { eftPayments } from "@/db/schema/eft";
+import { canTransition, eq, toApiEftPayment } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
-
-function toApi(payment: typeof eftPayments.$inferSelect) {
-  return {
-    id: payment.id,
-    reference: payment.reference,
-    user_id: payment.userId,
-    user_email: payment.userEmail,
-    company_id: payment.companyId,
-    company_name: payment.companyName,
-    lookup_key: payment.lookupKey,
-    package_name: payment.packageName,
-    amount: payment.amount / 100,
-    amount_cents: payment.amount,
-    credits: payment.credits,
-    annual_credits: payment.annualCredits,
-    billing_period: payment.billingPeriod,
-    type: payment.type,
-    status: payment.status,
-    proof_path: payment.proofPath,
-    proof_content_type: payment.proofContentType,
-    proof_filename: payment.proofFilename,
-    reject_reason: payment.rejectReason,
-    created_at: new Date(payment.createdAt).toISOString(),
-    updated_at: new Date(payment.updatedAt).toISOString(),
-    confirmed_at: payment.confirmedAt ? new Date(payment.confirmedAt).toISOString() : null,
-    rejected_at: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
-    credits_granted: payment.creditsGranted,
-  };
-}
 
 export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
   server: {
@@ -80,7 +46,7 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
             headers: { "content-type": "application/json" },
           });
         }
-        if (payment.status !== "pending_review") {
+        if (!canTransition(payment.status as never, "confirmed")) {
           return new Response(
             JSON.stringify({
               detail: `Payment must be in pending_review, currently ${payment.status}`,
@@ -94,7 +60,6 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
             ? payment.annualCredits
             : payment.credits;
 
-        // Grant credits atomically (read + update)
         const creditRows = await (
           db.select().from(companyCredits).where as unknown as (
             c: unknown,
@@ -132,10 +97,8 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
           updatedAt: now,
         }).where(eq(eftPayments.id, paymentId));
 
-        // Best-effort referral reward hook (issue 07) — if referrals tables exist, attempt
-        // We don't fail confirmation if referral logic errors
+        // Best-effort referral reward (issue 07) — no-op until referrals lands; keep narrow coupling.
         try {
-          // Dynamic import to avoid hard dependency if referrals module not yet implemented
           const mod = await import("@/lib/referral").catch(() => null);
           const maybeReward = (
             mod as unknown as {
@@ -152,7 +115,7 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
             });
           }
         } catch {
-          // ignore referral errors
+          // ignore referral errors — EFT confirmation must succeed even if referral hook fails
         }
 
         const updated = await (
@@ -161,7 +124,7 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/confirm")({
           ) => Promise<(typeof eftPayments.$inferSelect)[]>
         )(eq(eftPayments.id, paymentId)).then((r) => r[0]!);
 
-        return new Response(JSON.stringify(toApi(updated)), {
+        return new Response(JSON.stringify(toApiEftPayment(updated)), {
           headers: { "content-type": "application/json" },
         });
       },

@@ -1,44 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { eftPayments } from "@/db/schema/eft";
+import { eq, toApiEftPayment } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
-
-function toApi(payment: typeof eftPayments.$inferSelect) {
-  return {
-    id: payment.id,
-    reference: payment.reference,
-    user_id: payment.userId,
-    user_email: payment.userEmail,
-    company_id: payment.companyId,
-    company_name: payment.companyName,
-    lookup_key: payment.lookupKey,
-    package_name: payment.packageName,
-    amount: payment.amount / 100,
-    amount_cents: payment.amount,
-    credits: payment.credits,
-    annual_credits: payment.annualCredits,
-    billing_period: payment.billingPeriod,
-    type: payment.type,
-    status: payment.status,
-    proof_path: payment.proofPath,
-    proof_content_type: payment.proofContentType,
-    proof_filename: payment.proofFilename,
-    reject_reason: payment.rejectReason,
-    created_at: new Date(payment.createdAt).toISOString(),
-    updated_at: new Date(payment.updatedAt).toISOString(),
-    confirmed_at: payment.confirmedAt ? new Date(payment.confirmedAt).toISOString() : null,
-    rejected_at: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
-    credits_granted: payment.creditsGranted,
-  };
-}
 
 export const Route = createFileRoute("/api/eft/my-requests")({
   server: {
@@ -59,7 +25,7 @@ export const Route = createFileRoute("/api/eft/my-requests")({
           ) => Promise<(typeof eftPayments.$inferSelect)[]>
         )(eq(eftPayments.userId, session.user.id));
         rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return new Response(JSON.stringify({ payments: rows.map(toApi) }), {
+        return new Response(JSON.stringify({ payments: rows.map(toApiEftPayment) }), {
           headers: { "content-type": "application/json" },
         });
       },

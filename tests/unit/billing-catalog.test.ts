@@ -13,7 +13,12 @@ describe("billing-catalog — canonical packages", () => {
 
   it("Starter 5 / R399, Pro 20 / R1299 popular, Scale 50 / R2499, Single 1 / R149", () => {
     const starter = entryByLookup("tc_starter_monthly_v2");
-    expect(starter).toMatchObject({ credits: 5, amount_cents: 39900, type: "subscription", is_popular: false });
+    expect(starter).toMatchObject({
+      credits: 5,
+      amount_cents: 39900,
+      type: "subscription",
+      is_popular: false,
+    });
 
     const pro = entryByLookup("tc_pro_monthly_v2");
     expect(pro).toMatchObject({ credits: 20, amount_cents: 129900, is_popular: true });

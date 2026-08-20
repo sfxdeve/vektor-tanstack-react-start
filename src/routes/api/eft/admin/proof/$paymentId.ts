@@ -1,14 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { eftPayments } from "@/db/schema/eft";
+import { eq } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/eft/admin/proof/$paymentId")({

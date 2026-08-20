@@ -1,48 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { eftPayments } from "@/db/schema/eft";
 import { entryByLookup } from "@/lib/billing-catalog";
 import { generateReference } from "@/lib/eft";
+import { eq, toApiEftPayment } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
-
-function toApi(payment: typeof eftPayments.$inferSelect) {
-  return {
-    id: payment.id,
-    reference: payment.reference,
-    reference_display: payment.reference,
-    user_id: payment.userId,
-    user_email: payment.userEmail,
-    company_id: payment.companyId,
-    company_name: payment.companyName,
-    lookup_key: payment.lookupKey,
-    package_name: payment.packageName,
-    amount: payment.amount / 100,
-    amount_cents: payment.amount,
-    credits: payment.credits,
-    annual_credits: payment.annualCredits,
-    billing_period: payment.billingPeriod,
-    type: payment.type,
-    status: payment.status,
-    proof_path: payment.proofPath,
-    proof_content_type: payment.proofContentType,
-    proof_filename: payment.proofFilename,
-    reject_reason: payment.rejectReason,
-    created_at: new Date(payment.createdAt).toISOString(),
-    updated_at: new Date(payment.updatedAt).toISOString(),
-    confirmed_at: payment.confirmedAt ? new Date(payment.confirmedAt).toISOString() : null,
-    rejected_at: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
-    credits_granted: payment.creditsGranted,
-  };
-}
 
 export const Route = createFileRoute("/api/eft/request")({
   server: {
@@ -110,7 +75,7 @@ export const Route = createFileRoute("/api/eft/request")({
           });
         }
 
-        // Generate unique reference retry on collision
+        // Generate unique VEK-XXXXXX reference — retry on collision, fail fast if still colliding
         let reference = generateReference();
         for (let i = 0; i < 5; i++) {
           const existing = await (
@@ -120,6 +85,21 @@ export const Route = createFileRoute("/api/eft/request")({
           )(eq(eftPayments.reference, reference));
           if (existing.length === 0) break;
           reference = generateReference();
+        }
+        // Final guard: if the last generated reference still collides, surface a 500
+        // rather than letting the DB unique constraint throw an unhandled exception.
+        {
+          const collision = await (
+            db.select().from(eftPayments).where as unknown as (
+              c: unknown,
+            ) => Promise<(typeof eftPayments.$inferSelect)[]>
+          )(eq(eftPayments.reference, reference));
+          if (collision.length > 0) {
+            return new Response(
+              JSON.stringify({ detail: "Could not generate unique reference, please retry" }),
+              { status: 500, headers: { "content-type": "application/json" } },
+            );
+          }
         }
 
         const now = new Date();
@@ -160,7 +140,7 @@ export const Route = createFileRoute("/api/eft/request")({
           ) => Promise<(typeof eftPayments.$inferSelect)[]>
         )(eq(eftPayments.id, id)).then((r) => r[0]!);
 
-        return new Response(JSON.stringify(toApi(inserted)), {
+        return new Response(JSON.stringify(toApiEftPayment(inserted)), {
           status: 201,
           headers: { "content-type": "application/json" },
         });

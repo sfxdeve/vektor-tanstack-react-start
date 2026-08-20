@@ -1,44 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
-import { eq as drizzleEq } from "drizzle-orm";
-
-const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
-  a: unknown,
-  b: unknown,
-) => unknown;
 
 import { createDb } from "@/db";
 import { eftPayments } from "@/db/schema/eft";
+import { canTransition, eq, toApiEftPayment } from "@/lib/eft-api";
 import { getSessionFromRequest } from "@/lib/server-auth";
-
-function toApi(payment: typeof eftPayments.$inferSelect) {
-  return {
-    id: payment.id,
-    reference: payment.reference,
-    user_id: payment.userId,
-    user_email: payment.userEmail,
-    company_id: payment.companyId,
-    company_name: payment.companyName,
-    lookup_key: payment.lookupKey,
-    package_name: payment.packageName,
-    amount: payment.amount / 100,
-    amount_cents: payment.amount,
-    credits: payment.credits,
-    annual_credits: payment.annualCredits,
-    billing_period: payment.billingPeriod,
-    type: payment.type,
-    status: payment.status,
-    proof_path: payment.proofPath,
-    proof_content_type: payment.proofContentType,
-    proof_filename: payment.proofFilename,
-    reject_reason: payment.rejectReason,
-    created_at: new Date(payment.createdAt).toISOString(),
-    updated_at: new Date(payment.updatedAt).toISOString(),
-    confirmed_at: payment.confirmedAt ? new Date(payment.confirmedAt).toISOString() : null,
-    rejected_at: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
-    credits_granted: payment.creditsGranted,
-  };
-}
 
 export const Route = createFileRoute("/api/eft/admin/$paymentId/reject")({
   server: {
@@ -99,6 +65,12 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/reject")({
             { status: 400, headers: { "content-type": "application/json" } },
           );
         }
+        if (!canTransition(payment.status as never, "rejected")) {
+          return new Response(
+            JSON.stringify({ detail: `Cannot reject a ${payment.status} payment` }),
+            { status: 400, headers: { "content-type": "application/json" } },
+          );
+        }
 
         const now = new Date();
         await (
@@ -119,7 +91,7 @@ export const Route = createFileRoute("/api/eft/admin/$paymentId/reject")({
           ) => Promise<(typeof eftPayments.$inferSelect)[]>
         )(eq(eftPayments.id, paymentId)).then((r) => r[0]!);
 
-        return new Response(JSON.stringify(toApi(updated)), {
+        return new Response(JSON.stringify(toApiEftPayment(updated)), {
           headers: { "content-type": "application/json" },
         });
       },
