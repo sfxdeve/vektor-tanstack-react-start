@@ -17,6 +17,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -94,6 +95,11 @@ const DocumentsRoute = DocumentsRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -354,6 +361,7 @@ export interface FileRoutesByTo {
   '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -453,6 +462,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/documents'
     | '/forgot-password'
+    | '/help'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -501,6 +511,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/documents'
     | '/forgot-password'
+    | '/help'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -549,6 +560,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/documents'
     | '/forgot-password'
+    | '/help'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -598,6 +610,7 @@ export interface RootRouteChildren {
   BillingRoute: typeof BillingRoute
   DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -690,6 +703,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -998,6 +1018,7 @@ const rootRouteChildren: RootRouteChildren = {
   BillingRoute: BillingRoute,
   DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
