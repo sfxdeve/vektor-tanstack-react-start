@@ -2,7 +2,12 @@ import viteReact from "@vitejs/plugin-react";
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    alias: {
+      "cloudflare:workers": "/src/mocks/cloudflare-workers.ts",
+    },
+  },
   plugins: [viteReact()],
   test: {
     environment: "jsdom",

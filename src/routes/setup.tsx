@@ -171,8 +171,8 @@ function BargainingCouncilMultiSelect({
                 title={c.name}
               >
                 {c.code.replace(/_/g, " ")}
-                <span
-                  role="button"
+                <button
+                  type="button"
                   aria-label={`Remove ${c.code}`}
                   data-testid={`bc-chip-remove-${c.code}`}
                   className="-mr-0.5 inline-flex items-center justify-center rounded-sm p-0.5 hover:bg-zinc-700"
@@ -182,7 +182,7 @@ function BargainingCouncilMultiSelect({
                   }}
                 >
                   ✕
-                </span>
+                </button>
               </span>
             ))
           )}
@@ -207,10 +207,11 @@ function BargainingCouncilMultiSelect({
               filtered.map((c) => {
                 const checked = selectedSet.has(c.code);
                 return (
-                  <div
+                  <button
                     key={c.code}
+                    type="button"
                     data-testid={`bc-option-${c.code}`}
-                    className="flex cursor-pointer items-start gap-3 rounded-sm p-2 hover:bg-zinc-50"
+                    className="flex w-full items-start gap-3 rounded-sm p-2 text-left hover:bg-zinc-50"
                     onClick={() => onToggle(c.code)}
                   >
                     <div
@@ -234,7 +235,7 @@ function BargainingCouncilMultiSelect({
                         {c.regions && c.regions.length > 0 ? ` — ${c.regions.join(", ")}` : ""}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })
             )}

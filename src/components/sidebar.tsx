@@ -66,9 +66,11 @@ export function Sidebar() {
       <div className="h-14 shrink-0 lg:hidden" aria-hidden="true" />
 
       {mobileOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close navigation"
           data-testid="mobile-backdrop"
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-zinc-950/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}

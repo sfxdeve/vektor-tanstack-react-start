@@ -111,10 +111,18 @@ export function verifyCsdMaaa(value: string): VerifyResult {
   };
 }
 
+const VERIFY_DISPATCH = new Map<string, (v: string) => VerifyResult>([
+  ["cipc", verifyCipc],
+  ["sars", verifySarsTcs],
+  ["sars_tcs", verifySarsTcs],
+  ["tcs", verifySarsTcs],
+  ["csd", verifyCsdMaaa],
+  ["csd_maaa", verifyCsdMaaa],
+  ["maaa", verifyCsdMaaa],
+]);
+
 export function verify(kind: string, value: string): VerifyResult | null {
   const k = (kind ?? "").toLowerCase();
-  if (k === "cipc") return verifyCipc(value);
-  if (k === "sars" || k === "sars_tcs" || k === "tcs") return verifySarsTcs(value);
-  if (k === "csd" || k === "csd_maaa" || k === "maaa") return verifyCsdMaaa(value);
-  return null;
+  const fn = VERIFY_DISPATCH.get(k);
+  return fn ? fn(value) : null;
 }
