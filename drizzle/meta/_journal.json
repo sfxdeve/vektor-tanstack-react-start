@@ -50,6 +50,13 @@
       "when": 1787241770987,
       "tag": "0006_spooky_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787250119063,
+      "tag": "0007_faulty_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

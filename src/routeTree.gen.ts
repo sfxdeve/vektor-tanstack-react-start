@@ -14,6 +14,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AnalyzeRouteImport } from './routes/analyze'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as BillingRouteImport } from './routes/billing'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
@@ -23,20 +24,31 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBillingPackagesRouteImport } from './routes/api/billing/packages'
 import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
 import { Route as ApiCompaniesCompanyIdRouteImport } from './routes/api/companies/$companyId'
 import { Route as ApiDocumentsIdRouteImport } from './routes/api/documents/$id'
 import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/documents/preview-bbbee'
 import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
+import { Route as ApiEftBankDetailsRouteImport } from './routes/api/eft/bank-details'
+import { Route as ApiEftMyRequestsRouteImport } from './routes/api/eft/my-requests'
+import { Route as ApiEftRequestRouteImport } from './routes/api/eft/request'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
 import { Route as ApiTenderTenderIdRouteImport } from './routes/api/tender/$tenderId'
 import { Route as ApiTendersCompanyIdRouteImport } from './routes/api/tenders/$companyId'
 import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/analyze'
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
+import { Route as ApiBillingCreditsCompanyIdRouteImport } from './routes/api/billing/credits/$companyId'
 import { Route as ApiDocumentsCompanyCompanyIdRouteImport } from './routes/api/documents/company/$companyId'
 import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
+import { Route as ApiEftAdminAllRouteImport } from './routes/api/eft/admin/all'
+import { Route as ApiEftRequestPaymentIdRouteImport } from './routes/api/eft/request/$paymentId'
+import { Route as ApiEftUploadProofPaymentIdRouteImport } from './routes/api/eft/upload-proof/$paymentId'
 import { Route as ApiTenderTenderIdSbd4RouteImport } from './routes/api/tender/$tenderId/sbd4'
 import { Route as ApiTenderTenderIdSbd61RouteImport } from './routes/api/tender/$tenderId/sbd61'
+import { Route as ApiEftAdminPaymentIdConfirmRouteImport } from './routes/api/eft/admin/$paymentId/confirm'
+import { Route as ApiEftAdminPaymentIdRejectRouteImport } from './routes/api/eft/admin/$paymentId/reject'
+import { Route as ApiEftAdminProofPaymentIdRouteImport } from './routes/api/eft/admin/proof/$paymentId'
 import { Route as ApiTenderTenderIdReturnablesToggleRouteImport } from './routes/api/tender/$tenderId/returnables/toggle'
 
 const IndexRoute = IndexRouteImport.update({
@@ -62,6 +74,11 @@ const AnalyzeRoute = AnalyzeRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocumentsRoute = DocumentsRouteImport.update({
@@ -109,6 +126,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingPackagesRoute = ApiBillingPackagesRouteImport.update({
+  id: '/api/billing/packages',
+  path: '/api/billing/packages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCompaniesIndexRoute = ApiCompaniesIndexRouteImport.update({
   id: '/api/companies/',
   path: '/api/companies/',
@@ -133,6 +155,21 @@ const ApiDocumentsPreviewBbbeeRoute =
 const ApiDocumentsUploadRoute = ApiDocumentsUploadRouteImport.update({
   id: '/api/documents/upload',
   path: '/api/documents/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEftBankDetailsRoute = ApiEftBankDetailsRouteImport.update({
+  id: '/api/eft/bank-details',
+  path: '/api/eft/bank-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEftMyRequestsRoute = ApiEftMyRequestsRouteImport.update({
+  id: '/api/eft/my-requests',
+  path: '/api/eft/my-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEftRequestRoute = ApiEftRequestRouteImport.update({
+  id: '/api/eft/request',
+  path: '/api/eft/request',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiReferenceBargainingCouncilsRoute =
@@ -161,6 +198,12 @@ const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
   path: '/api/verify/statutory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingCreditsCompanyIdRoute =
+  ApiBillingCreditsCompanyIdRouteImport.update({
+    id: '/api/billing/credits/$companyId',
+    path: '/api/billing/credits/$companyId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiDocumentsCompanyCompanyIdRoute =
   ApiDocumentsCompanyCompanyIdRouteImport.update({
     id: '/api/documents/company/$companyId',
@@ -173,6 +216,22 @@ const ApiDocumentsDownloadDocIdRoute =
     path: '/api/documents/download/$docId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiEftAdminAllRoute = ApiEftAdminAllRouteImport.update({
+  id: '/api/eft/admin/all',
+  path: '/api/eft/admin/all',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEftRequestPaymentIdRoute = ApiEftRequestPaymentIdRouteImport.update({
+  id: '/$paymentId',
+  path: '/$paymentId',
+  getParentRoute: () => ApiEftRequestRoute,
+} as any)
+const ApiEftUploadProofPaymentIdRoute =
+  ApiEftUploadProofPaymentIdRouteImport.update({
+    id: '/api/eft/upload-proof/$paymentId',
+    path: '/api/eft/upload-proof/$paymentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTenderTenderIdSbd4Route = ApiTenderTenderIdSbd4RouteImport.update({
   id: '/sbd4',
   path: '/sbd4',
@@ -183,6 +242,24 @@ const ApiTenderTenderIdSbd61Route = ApiTenderTenderIdSbd61RouteImport.update({
   path: '/sbd61',
   getParentRoute: () => ApiTenderTenderIdRoute,
 } as any)
+const ApiEftAdminPaymentIdConfirmRoute =
+  ApiEftAdminPaymentIdConfirmRouteImport.update({
+    id: '/api/eft/admin/$paymentId/confirm',
+    path: '/api/eft/admin/$paymentId/confirm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiEftAdminPaymentIdRejectRoute =
+  ApiEftAdminPaymentIdRejectRouteImport.update({
+    id: '/api/eft/admin/$paymentId/reject',
+    path: '/api/eft/admin/$paymentId/reject',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiEftAdminProofPaymentIdRoute =
+  ApiEftAdminProofPaymentIdRouteImport.update({
+    id: '/api/eft/admin/proof/$paymentId',
+    path: '/api/eft/admin/proof/$paymentId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTenderTenderIdReturnablesToggleRoute =
   ApiTenderTenderIdReturnablesToggleRouteImport.update({
     id: '/returnables/toggle',
@@ -196,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
+  '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -205,20 +283,31 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/eft/bank-details': typeof ApiEftBankDetailsRoute
+  '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
+  '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/eft/admin/all': typeof ApiEftAdminAllRoute
+  '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
+  '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
+  '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
+  '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesByTo {
@@ -227,6 +316,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
+  '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -236,20 +326,31 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/eft/bank-details': typeof ApiEftBankDetailsRoute
+  '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
+  '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies': typeof ApiCompaniesIndexRoute
+  '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/eft/admin/all': typeof ApiEftAdminAllRoute
+  '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
+  '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
+  '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
+  '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesById {
@@ -259,6 +360,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
+  '/billing': typeof BillingRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -268,20 +370,31 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/eft/bank-details': typeof ApiEftBankDetailsRoute
+  '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
+  '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/billing/credits/$companyId': typeof ApiBillingCreditsCompanyIdRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/eft/admin/all': typeof ApiEftAdminAllRoute
+  '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
+  '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
+  '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
+  '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRouteTypes {
@@ -292,6 +405,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/app'
+    | '/billing'
     | '/documents'
     | '/forgot-password'
     | '/login'
@@ -301,20 +415,31 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/auth/$'
+    | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
+    | '/api/eft/bank-details'
+    | '/api/eft/my-requests'
+    | '/api/eft/request'
     | '/api/reference/bargaining-councils'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/eft/admin/all'
+    | '/api/eft/request/$paymentId'
+    | '/api/eft/upload-proof/$paymentId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/eft/admin/$paymentId/confirm'
+    | '/api/eft/admin/$paymentId/reject'
+    | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -323,6 +448,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/app'
+    | '/billing'
     | '/documents'
     | '/forgot-password'
     | '/login'
@@ -332,20 +458,31 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/auth/$'
+    | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
+    | '/api/eft/bank-details'
+    | '/api/eft/my-requests'
+    | '/api/eft/request'
     | '/api/reference/bargaining-councils'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies'
+    | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/eft/admin/all'
+    | '/api/eft/request/$paymentId'
+    | '/api/eft/upload-proof/$paymentId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/eft/admin/$paymentId/confirm'
+    | '/api/eft/admin/$paymentId/reject'
+    | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
   id:
     | '__root__'
@@ -354,6 +491,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analyze'
     | '/app'
+    | '/billing'
     | '/documents'
     | '/forgot-password'
     | '/login'
@@ -363,20 +501,31 @@ export interface FileRouteTypes {
     | '/signup'
     | '/terms'
     | '/api/auth/$'
+    | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
+    | '/api/eft/bank-details'
+    | '/api/eft/my-requests'
+    | '/api/eft/request'
     | '/api/reference/bargaining-councils'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/billing/credits/$companyId'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/eft/admin/all'
+    | '/api/eft/request/$paymentId'
+    | '/api/eft/upload-proof/$paymentId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/eft/admin/$paymentId/confirm'
+    | '/api/eft/admin/$paymentId/reject'
+    | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesById: FileRoutesById
 }
@@ -386,6 +535,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AnalyzeRoute: typeof AnalyzeRoute
   AppRoute: typeof AppRoute
+  BillingRoute: typeof BillingRoute
   DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
@@ -395,18 +545,28 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBillingPackagesRoute: typeof ApiBillingPackagesRoute
   ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
   ApiDocumentsIdRoute: typeof ApiDocumentsIdRoute
   ApiDocumentsPreviewBbbeeRoute: typeof ApiDocumentsPreviewBbbeeRoute
   ApiDocumentsUploadRoute: typeof ApiDocumentsUploadRoute
+  ApiEftBankDetailsRoute: typeof ApiEftBankDetailsRoute
+  ApiEftMyRequestsRoute: typeof ApiEftMyRequestsRoute
+  ApiEftRequestRoute: typeof ApiEftRequestRouteWithChildren
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
   ApiTenderTenderIdRoute: typeof ApiTenderTenderIdRouteWithChildren
   ApiTendersCompanyIdRoute: typeof ApiTendersCompanyIdRoute
   ApiTendersAnalyzeRoute: typeof ApiTendersAnalyzeRoute
   ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
   ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
+  ApiBillingCreditsCompanyIdRoute: typeof ApiBillingCreditsCompanyIdRoute
   ApiDocumentsCompanyCompanyIdRoute: typeof ApiDocumentsCompanyCompanyIdRoute
   ApiDocumentsDownloadDocIdRoute: typeof ApiDocumentsDownloadDocIdRoute
+  ApiEftAdminAllRoute: typeof ApiEftAdminAllRoute
+  ApiEftUploadProofPaymentIdRoute: typeof ApiEftUploadProofPaymentIdRoute
+  ApiEftAdminPaymentIdConfirmRoute: typeof ApiEftAdminPaymentIdConfirmRoute
+  ApiEftAdminPaymentIdRejectRoute: typeof ApiEftAdminPaymentIdRejectRoute
+  ApiEftAdminProofPaymentIdRoute: typeof ApiEftAdminProofPaymentIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -444,6 +604,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/documents': {
@@ -509,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/packages': {
+      id: '/api/billing/packages'
+      path: '/api/billing/packages'
+      fullPath: '/api/billing/packages'
+      preLoaderRoute: typeof ApiBillingPackagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/companies/': {
       id: '/api/companies/'
       path: '/api/companies'
@@ -542,6 +716,27 @@ declare module '@tanstack/react-router' {
       path: '/api/documents/upload'
       fullPath: '/api/documents/upload'
       preLoaderRoute: typeof ApiDocumentsUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/bank-details': {
+      id: '/api/eft/bank-details'
+      path: '/api/eft/bank-details'
+      fullPath: '/api/eft/bank-details'
+      preLoaderRoute: typeof ApiEftBankDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/my-requests': {
+      id: '/api/eft/my-requests'
+      path: '/api/eft/my-requests'
+      fullPath: '/api/eft/my-requests'
+      preLoaderRoute: typeof ApiEftMyRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/request': {
+      id: '/api/eft/request'
+      path: '/api/eft/request'
+      fullPath: '/api/eft/request'
+      preLoaderRoute: typeof ApiEftRequestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/reference/bargaining-councils': {
@@ -579,6 +774,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVerifyStatutoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/billing/credits/$companyId': {
+      id: '/api/billing/credits/$companyId'
+      path: '/api/billing/credits/$companyId'
+      fullPath: '/api/billing/credits/$companyId'
+      preLoaderRoute: typeof ApiBillingCreditsCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents/company/$companyId': {
       id: '/api/documents/company/$companyId'
       path: '/api/documents/company/$companyId'
@@ -591,6 +793,27 @@ declare module '@tanstack/react-router' {
       path: '/api/documents/download/$docId'
       fullPath: '/api/documents/download/$docId'
       preLoaderRoute: typeof ApiDocumentsDownloadDocIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/admin/all': {
+      id: '/api/eft/admin/all'
+      path: '/api/eft/admin/all'
+      fullPath: '/api/eft/admin/all'
+      preLoaderRoute: typeof ApiEftAdminAllRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/request/$paymentId': {
+      id: '/api/eft/request/$paymentId'
+      path: '/$paymentId'
+      fullPath: '/api/eft/request/$paymentId'
+      preLoaderRoute: typeof ApiEftRequestPaymentIdRouteImport
+      parentRoute: typeof ApiEftRequestRoute
+    }
+    '/api/eft/upload-proof/$paymentId': {
+      id: '/api/eft/upload-proof/$paymentId'
+      path: '/api/eft/upload-proof/$paymentId'
+      fullPath: '/api/eft/upload-proof/$paymentId'
+      preLoaderRoute: typeof ApiEftUploadProofPaymentIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tender/$tenderId/sbd4': {
@@ -607,6 +830,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTenderTenderIdSbd61RouteImport
       parentRoute: typeof ApiTenderTenderIdRoute
     }
+    '/api/eft/admin/$paymentId/confirm': {
+      id: '/api/eft/admin/$paymentId/confirm'
+      path: '/api/eft/admin/$paymentId/confirm'
+      fullPath: '/api/eft/admin/$paymentId/confirm'
+      preLoaderRoute: typeof ApiEftAdminPaymentIdConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/admin/$paymentId/reject': {
+      id: '/api/eft/admin/$paymentId/reject'
+      path: '/api/eft/admin/$paymentId/reject'
+      fullPath: '/api/eft/admin/$paymentId/reject'
+      preLoaderRoute: typeof ApiEftAdminPaymentIdRejectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/eft/admin/proof/$paymentId': {
+      id: '/api/eft/admin/proof/$paymentId'
+      path: '/api/eft/admin/proof/$paymentId'
+      fullPath: '/api/eft/admin/proof/$paymentId'
+      preLoaderRoute: typeof ApiEftAdminProofPaymentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/tender/$tenderId/returnables/toggle': {
       id: '/api/tender/$tenderId/returnables/toggle'
       path: '/returnables/toggle'
@@ -616,6 +860,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface ApiEftRequestRouteChildren {
+  ApiEftRequestPaymentIdRoute: typeof ApiEftRequestPaymentIdRoute
+}
+
+const ApiEftRequestRouteChildren: ApiEftRequestRouteChildren = {
+  ApiEftRequestPaymentIdRoute: ApiEftRequestPaymentIdRoute,
+}
+
+const ApiEftRequestRouteWithChildren = ApiEftRequestRoute._addFileChildren(
+  ApiEftRequestRouteChildren,
+)
 
 interface ApiTenderTenderIdRouteChildren {
   ApiTenderTenderIdSbd4Route: typeof ApiTenderTenderIdSbd4Route
@@ -639,6 +895,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AnalyzeRoute: AnalyzeRoute,
   AppRoute: AppRoute,
+  BillingRoute: BillingRoute,
   DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
@@ -648,18 +905,28 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBillingPackagesRoute: ApiBillingPackagesRoute,
   ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
   ApiDocumentsIdRoute: ApiDocumentsIdRoute,
   ApiDocumentsPreviewBbbeeRoute: ApiDocumentsPreviewBbbeeRoute,
   ApiDocumentsUploadRoute: ApiDocumentsUploadRoute,
+  ApiEftBankDetailsRoute: ApiEftBankDetailsRoute,
+  ApiEftMyRequestsRoute: ApiEftMyRequestsRoute,
+  ApiEftRequestRoute: ApiEftRequestRouteWithChildren,
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
   ApiTenderTenderIdRoute: ApiTenderTenderIdRouteWithChildren,
   ApiTendersCompanyIdRoute: ApiTendersCompanyIdRoute,
   ApiTendersAnalyzeRoute: ApiTendersAnalyzeRoute,
   ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
   ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
+  ApiBillingCreditsCompanyIdRoute: ApiBillingCreditsCompanyIdRoute,
   ApiDocumentsCompanyCompanyIdRoute: ApiDocumentsCompanyCompanyIdRoute,
   ApiDocumentsDownloadDocIdRoute: ApiDocumentsDownloadDocIdRoute,
+  ApiEftAdminAllRoute: ApiEftAdminAllRoute,
+  ApiEftUploadProofPaymentIdRoute: ApiEftUploadProofPaymentIdRoute,
+  ApiEftAdminPaymentIdConfirmRoute: ApiEftAdminPaymentIdConfirmRoute,
+  ApiEftAdminPaymentIdRejectRoute: ApiEftAdminPaymentIdRejectRoute,
+  ApiEftAdminProofPaymentIdRoute: ApiEftAdminProofPaymentIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
