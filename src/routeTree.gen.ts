@@ -35,6 +35,8 @@ import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/anal
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
 import { Route as ApiDocumentsCompanyCompanyIdRouteImport } from './routes/api/documents/company/$companyId'
 import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
+import { Route as ApiTenderTenderIdSbd4RouteImport } from './routes/api/tender/$tenderId/sbd4'
+import { Route as ApiTenderTenderIdSbd61RouteImport } from './routes/api/tender/$tenderId/sbd61'
 import { Route as ApiTenderTenderIdReturnablesToggleRouteImport } from './routes/api/tender/$tenderId/returnables/toggle'
 
 const IndexRoute = IndexRouteImport.update({
@@ -171,6 +173,16 @@ const ApiDocumentsDownloadDocIdRoute =
     path: '/api/documents/download/$docId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTenderTenderIdSbd4Route = ApiTenderTenderIdSbd4RouteImport.update({
+  id: '/sbd4',
+  path: '/sbd4',
+  getParentRoute: () => ApiTenderTenderIdRoute,
+} as any)
+const ApiTenderTenderIdSbd61Route = ApiTenderTenderIdSbd61RouteImport.update({
+  id: '/sbd61',
+  path: '/sbd61',
+  getParentRoute: () => ApiTenderTenderIdRoute,
+} as any)
 const ApiTenderTenderIdReturnablesToggleRoute =
   ApiTenderTenderIdReturnablesToggleRouteImport.update({
     id: '/returnables/toggle',
@@ -205,6 +217,8 @@ export interface FileRoutesByFullPath {
   '/api/companies/': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
+  '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesByTo {
@@ -234,6 +248,8 @@ export interface FileRoutesByTo {
   '/api/companies': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
+  '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesById {
@@ -264,6 +280,8 @@ export interface FileRoutesById {
   '/api/companies/': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
+  '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRouteTypes {
@@ -295,6 +313,8 @@ export interface FileRouteTypes {
     | '/api/companies/'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/sbd4'
+    | '/api/tender/$tenderId/sbd61'
     | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -324,6 +344,8 @@ export interface FileRouteTypes {
     | '/api/companies'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/sbd4'
+    | '/api/tender/$tenderId/sbd61'
     | '/api/tender/$tenderId/returnables/toggle'
   id:
     | '__root__'
@@ -353,6 +375,8 @@ export interface FileRouteTypes {
     | '/api/companies/'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/sbd4'
+    | '/api/tender/$tenderId/sbd61'
     | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesById: FileRoutesById
 }
@@ -569,6 +593,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDocumentsDownloadDocIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tender/$tenderId/sbd4': {
+      id: '/api/tender/$tenderId/sbd4'
+      path: '/sbd4'
+      fullPath: '/api/tender/$tenderId/sbd4'
+      preLoaderRoute: typeof ApiTenderTenderIdSbd4RouteImport
+      parentRoute: typeof ApiTenderTenderIdRoute
+    }
+    '/api/tender/$tenderId/sbd61': {
+      id: '/api/tender/$tenderId/sbd61'
+      path: '/sbd61'
+      fullPath: '/api/tender/$tenderId/sbd61'
+      preLoaderRoute: typeof ApiTenderTenderIdSbd61RouteImport
+      parentRoute: typeof ApiTenderTenderIdRoute
+    }
     '/api/tender/$tenderId/returnables/toggle': {
       id: '/api/tender/$tenderId/returnables/toggle'
       path: '/returnables/toggle'
@@ -580,10 +618,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface ApiTenderTenderIdRouteChildren {
+  ApiTenderTenderIdSbd4Route: typeof ApiTenderTenderIdSbd4Route
+  ApiTenderTenderIdSbd61Route: typeof ApiTenderTenderIdSbd61Route
   ApiTenderTenderIdReturnablesToggleRoute: typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 
 const ApiTenderTenderIdRouteChildren: ApiTenderTenderIdRouteChildren = {
+  ApiTenderTenderIdSbd4Route: ApiTenderTenderIdSbd4Route,
+  ApiTenderTenderIdSbd61Route: ApiTenderTenderIdSbd61Route,
   ApiTenderTenderIdReturnablesToggleRoute:
     ApiTenderTenderIdReturnablesToggleRoute,
 }

@@ -216,6 +216,28 @@ function AnalyzePage() {
     }
   };
 
+  const downloadSbd = async (tenderId: string, form: "sbd4" | "sbd61") => {
+    try {
+      const res = await fetch(`/api/tender/${tenderId}/${form}`);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { detail?: string };
+        throw new Error(data.detail || "Failed to download form");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${form.toUpperCase()}-${tenderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`${form.toUpperCase()} downloaded`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to download form");
+    }
+  };
+
   if (isPending) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
@@ -430,9 +452,9 @@ function AnalyzePage() {
 
                 {tenderList.length > 0 && (
                   <div className="pt-4 border-t border-zinc-200" data-testid="tender-list-section">
-                    <h3 className="text-xs font-semibold tracking-[0.15em] text-zinc-500 uppercase">
+                    <h2 className="text-xs font-semibold tracking-[0.15em] text-zinc-500 uppercase">
                       Recent Tenders
-                    </h3>
+                    </h2>
                     <ul className="mt-3 space-y-2">
                       {tenderList.slice(0, 5).map((t) => (
                         <li
@@ -609,6 +631,7 @@ function AnalyzePage() {
                               checked={status.verified}
                               onChange={() => void toggleReturnable(name, status.verified)}
                               data-testid={`returnable-toggle-${name.replace(/[^a-zA-Z0-9]/g, "_")}`}
+                              aria-label={`Mark ${name} as ${status.verified ? "missing" : "included"}`}
                               className="h-4 w-4 rounded-sm border-zinc-300"
                             />
                             <span
@@ -675,6 +698,47 @@ function AnalyzePage() {
                   )}
                 </CardContent>
               </Card>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="sbd-downloads">
+                <Button
+                  data-testid="download-sbd4-btn"
+                  onClick={() => {
+                    const tid = result.tender_id ?? result.id;
+                    if (tid) void downloadSbd(tid, "sbd4");
+                  }}
+                  size="lg"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white justify-start px-6 h-16"
+                >
+                  <span className="text-left">
+                    <div className="font-bold">Download SBD 4</div>
+                    <div className="text-xs opacity-80">Declaration of Interest</div>
+                  </span>
+                </Button>
+                <Button
+                  data-testid="download-sbd61-btn"
+                  onClick={() => {
+                    const tid = result.tender_id ?? result.id;
+                    if (tid) void downloadSbd(tid, "sbd61");
+                  }}
+                  size="lg"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white justify-start px-6 h-16"
+                >
+                  <span className="text-left">
+                    <div className="font-bold">Download SBD 6.1</div>
+                    <div className="text-xs opacity-80">Preference Points Claim</div>
+                  </span>
+                </Button>
+              </div>
+
+              <Button
+                data-testid="view-dashboard-btn"
+                onClick={() => void navigate({ to: "/app" })}
+                variant="outline"
+                size="lg"
+                className="w-full border-zinc-900 text-zinc-900 hover:bg-zinc-900 hover:text-white"
+              >
+                View All Tenders on Dashboard
+              </Button>
             </div>
           )}
 
