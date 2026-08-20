@@ -40,3 +40,5 @@ playwright/.cache/
 .vscode/
 .worktrees/
 
+# Scratch - local issue tracker
+.scratch/
