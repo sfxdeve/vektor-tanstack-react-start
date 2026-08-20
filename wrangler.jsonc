@@ -6,6 +6,15 @@
   "observability": {
     "enabled": true,
   },
+  "triggers": {
+    "crons": ["0 8 * * *"],
+  },
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "vektor-storage",
+    },
+  ],
   "d1_databases": [
     {
       "binding": "DB",

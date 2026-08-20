@@ -18,6 +18,16 @@ export function createAuth(d1: D1Database, options?: CreateAuthOptions) {
       provider: "sqlite",
       schema,
     }),
+    user: {
+      additionalFields: {
+        role: {
+          type: "string",
+          required: false,
+          defaultValue: "user",
+          input: false,
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
     },

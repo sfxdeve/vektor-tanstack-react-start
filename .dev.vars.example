@@ -1,3 +1,34 @@
 # Local development secrets for Cloudflare Workers / Better Auth
+# Copy to .dev.vars and fill in values. Never commit .dev.vars with real secrets.
+
 BETTER_AUTH_SECRET="development-secret-key-at-least-32-chars-long"
 BETTER_AUTH_URL="http://localhost:5173"
+APP_URL="http://localhost:5173"
+
+# Captures outgoing email in the in-memory dev mailbox (/api/dev/mailbox)
+# instead of sending it. Local development and e2e only — never set this in
+# production.
+DEV_MAILBOX="1"
+
+# Local/e2e only: return a deterministic tender extraction instead of calling
+# Workers AI, so the analyze journey is reproducible without wrangler login.
+# Never set this in production.
+DEV_AI_STUB="1"
+
+# Resend email delivery. Required in production; leave unset locally so the
+# dev mailbox above takes over.
+# RESEND_API_KEY="re_..."
+# SENDER_EMAIL="no-reply@vektorhq.co.za"
+# SENDER_NAME="Vektor"
+# EMAIL_FROM="Vektor <no-reply@vektorhq.co.za>"
+
+# AI / Tender Analysis (uncomment for local AI calls)
+# OPENAI_API_KEY="sk-..."
+# AI_GATEWAY_ID=""
+
+# EFT bank details (required in production via `wrangler secret put`)
+# EFT_BANK_NAME="First National Bank"
+# EFT_ACCOUNT_HOLDER="Vektor (Pty) Ltd"
+# EFT_ACCOUNT_NUMBER="0000000000"
+# EFT_BRANCH_CODE="250655"
+# EFT_ACCOUNT_TYPE="Cheque"
