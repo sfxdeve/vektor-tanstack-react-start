@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AnalyzeRouteImport } from './routes/analyze'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -28,9 +29,13 @@ import { Route as ApiDocumentsIdRouteImport } from './routes/api/documents/$id'
 import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/documents/preview-bbbee'
 import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
+import { Route as ApiTenderTenderIdRouteImport } from './routes/api/tender/$tenderId'
+import { Route as ApiTendersCompanyIdRouteImport } from './routes/api/tenders/$companyId'
+import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/analyze'
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
 import { Route as ApiDocumentsCompanyCompanyIdRouteImport } from './routes/api/documents/company/$companyId'
 import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
+import { Route as ApiTenderTenderIdReturnablesToggleRouteImport } from './routes/api/tender/$tenderId/returnables/toggle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -45,6 +50,11 @@ const AboutRoute = AboutRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyzeRoute = AnalyzeRouteImport.update({
+  id: '/analyze',
+  path: '/analyze',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -129,6 +139,21 @@ const ApiReferenceBargainingCouncilsRoute =
     path: '/api/reference/bargaining-councils',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTenderTenderIdRoute = ApiTenderTenderIdRouteImport.update({
+  id: '/api/tender/$tenderId',
+  path: '/api/tender/$tenderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTendersCompanyIdRoute = ApiTendersCompanyIdRouteImport.update({
+  id: '/api/tenders/$companyId',
+  path: '/api/tenders/$companyId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTendersAnalyzeRoute = ApiTendersAnalyzeRouteImport.update({
+  id: '/api/tenders/analyze',
+  path: '/api/tenders/analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
   id: '/api/verify/statutory',
   path: '/api/verify/statutory',
@@ -146,11 +171,18 @@ const ApiDocumentsDownloadDocIdRoute =
     path: '/api/documents/download/$docId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiTenderTenderIdReturnablesToggleRoute =
+  ApiTenderTenderIdReturnablesToggleRouteImport.update({
+    id: '/returnables/toggle',
+    path: '/returnables/toggle',
+    getParentRoute: () => ApiTenderTenderIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -166,15 +198,20 @@ export interface FileRoutesByFullPath {
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
+  '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
+  '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -190,16 +227,21 @@ export interface FileRoutesByTo {
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
+  '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
+  '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/analyze': typeof AnalyzeRoute
   '/app': typeof AppRoute
   '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -215,10 +257,14 @@ export interface FileRoutesById {
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
+  '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
+  '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
   '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
+  '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -226,6 +272,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/analyze'
     | '/app'
     | '/documents'
     | '/forgot-password'
@@ -241,15 +288,20 @@ export interface FileRouteTypes {
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
+    | '/api/tender/$tenderId'
+    | '/api/tenders/$companyId'
+    | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/admin'
+    | '/analyze'
     | '/app'
     | '/documents'
     | '/forgot-password'
@@ -265,15 +317,20 @@ export interface FileRouteTypes {
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
+    | '/api/tender/$tenderId'
+    | '/api/tenders/$companyId'
+    | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/returnables/toggle'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/admin'
+    | '/analyze'
     | '/app'
     | '/documents'
     | '/forgot-password'
@@ -289,16 +346,21 @@ export interface FileRouteTypes {
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
+    | '/api/tender/$tenderId'
+    | '/api/tenders/$companyId'
+    | '/api/tenders/analyze'
     | '/api/verify/statutory'
     | '/api/companies/'
     | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
+    | '/api/tender/$tenderId/returnables/toggle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
+  AnalyzeRoute: typeof AnalyzeRoute
   AppRoute: typeof AppRoute
   DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -314,6 +376,9 @@ export interface RootRouteChildren {
   ApiDocumentsPreviewBbbeeRoute: typeof ApiDocumentsPreviewBbbeeRoute
   ApiDocumentsUploadRoute: typeof ApiDocumentsUploadRoute
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
+  ApiTenderTenderIdRoute: typeof ApiTenderTenderIdRouteWithChildren
+  ApiTendersCompanyIdRoute: typeof ApiTendersCompanyIdRoute
+  ApiTendersAnalyzeRoute: typeof ApiTendersAnalyzeRoute
   ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
   ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
   ApiDocumentsCompanyCompanyIdRoute: typeof ApiDocumentsCompanyCompanyIdRoute
@@ -341,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analyze': {
+      id: '/analyze'
+      path: '/analyze'
+      fullPath: '/analyze'
+      preLoaderRoute: typeof AnalyzeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -455,6 +527,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReferenceBargainingCouncilsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tender/$tenderId': {
+      id: '/api/tender/$tenderId'
+      path: '/api/tender/$tenderId'
+      fullPath: '/api/tender/$tenderId'
+      preLoaderRoute: typeof ApiTenderTenderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tenders/$companyId': {
+      id: '/api/tenders/$companyId'
+      path: '/api/tenders/$companyId'
+      fullPath: '/api/tenders/$companyId'
+      preLoaderRoute: typeof ApiTendersCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tenders/analyze': {
+      id: '/api/tenders/analyze'
+      path: '/api/tenders/analyze'
+      fullPath: '/api/tenders/analyze'
+      preLoaderRoute: typeof ApiTendersAnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/verify/statutory': {
       id: '/api/verify/statutory'
       path: '/api/verify/statutory'
@@ -476,13 +569,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDocumentsDownloadDocIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tender/$tenderId/returnables/toggle': {
+      id: '/api/tender/$tenderId/returnables/toggle'
+      path: '/returnables/toggle'
+      fullPath: '/api/tender/$tenderId/returnables/toggle'
+      preLoaderRoute: typeof ApiTenderTenderIdReturnablesToggleRouteImport
+      parentRoute: typeof ApiTenderTenderIdRoute
+    }
   }
 }
+
+interface ApiTenderTenderIdRouteChildren {
+  ApiTenderTenderIdReturnablesToggleRoute: typeof ApiTenderTenderIdReturnablesToggleRoute
+}
+
+const ApiTenderTenderIdRouteChildren: ApiTenderTenderIdRouteChildren = {
+  ApiTenderTenderIdReturnablesToggleRoute:
+    ApiTenderTenderIdReturnablesToggleRoute,
+}
+
+const ApiTenderTenderIdRouteWithChildren =
+  ApiTenderTenderIdRoute._addFileChildren(ApiTenderTenderIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
+  AnalyzeRoute: AnalyzeRoute,
   AppRoute: AppRoute,
   DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -498,6 +611,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDocumentsPreviewBbbeeRoute: ApiDocumentsPreviewBbbeeRoute,
   ApiDocumentsUploadRoute: ApiDocumentsUploadRoute,
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
+  ApiTenderTenderIdRoute: ApiTenderTenderIdRouteWithChildren,
+  ApiTendersCompanyIdRoute: ApiTendersCompanyIdRoute,
+  ApiTendersAnalyzeRoute: ApiTendersAnalyzeRoute,
   ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
   ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
   ApiDocumentsCompanyCompanyIdRoute: ApiDocumentsCompanyCompanyIdRoute,

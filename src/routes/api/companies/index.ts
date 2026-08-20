@@ -8,6 +8,7 @@ const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
 
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
+import { companyCredits } from "@/db/schema/credits";
 import {
   nullIfBlank,
   toApiCompany,
@@ -140,6 +141,16 @@ export const Route = createFileRoute("/api/companies/")({
         };
 
         await db.insert(companies).values(row);
+        // Seed initial credits so tender analysis works before EFT billing is wired (5 credits)
+        try {
+          await db.insert(companyCredits).values({
+            companyId: id,
+            credits: 5,
+            updatedAt: now,
+          });
+        } catch {
+          // ignore if already exists or D1 not ready (e.g., migration pending)
+        }
         const created = await (
           db.select().from(companies).where as unknown as (
             c: unknown,

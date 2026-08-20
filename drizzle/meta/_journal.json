@@ -36,6 +36,13 @@
       "when": 1787235184124,
       "tag": "0004_round_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787237655076,
+      "tag": "0005_panoramic_shocker",
+      "breakpoints": true
     }
   ]
 }
