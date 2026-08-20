@@ -1,8 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "vektor-tanstack-react-start",
-  "compatibility_date": "2026-08-15",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2026-08-20",
   "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": true,
