@@ -65,9 +65,9 @@ export const Route = createFileRoute("/api/tenders/analyze")({
         }
 
         const db = createDb(env.DB as unknown as D1Database);
+        // Admin bypass mirrors backend/deps.py fetch_owned_company (admins bypass ownership)
         const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
 
-        // Fetch company and verify ownership
         const companyRows = await (
           db.select().from(companies).where as unknown as (
             c: unknown,
@@ -87,7 +87,6 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           });
         }
 
-        // Enforce one-credit consumption
         const hasCredit = await consumeCredit(db, companyId);
         if (!hasCredit) {
           return new Response(
@@ -112,12 +111,10 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           });
         }
 
-        // Extract PDF text (Worker-native via pdfjs)
         let pdfText: string;
         try {
           pdfText = await extractTextFromPdfBytes(bytes);
           if (!pdfText || pdfText.trim().length < 10) {
-            // Still attempt AI, but if text is empty we'll refund and error
             if (!pdfText.trim()) {
               throw new Error("Failed to extract PDF text");
             }
@@ -131,7 +128,9 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           });
         }
 
-        // Persist original PDF to R2 (best-effort but not fatal if unavailable)
+        // Persist original PDF to R2 — if STORAGE is bound, failure is fatal and refunds.
+        // When unbound (vite preview without R2), we warn and continue with null key so e2e can run;
+        // production wrangler deploys always have STORAGE bound, so persistence is auditable there.
         let pdfStorageKey: string | null = null;
         const storage = (env as unknown as { STORAGE?: R2Bucket }).STORAGE;
         if (storage) {
@@ -142,19 +141,32 @@ export const Route = createFileRoute("/api/tenders/analyze")({
             });
             pdfStorageKey = key;
           } catch (e) {
-            console.warn("R2 put failed for tender PDF", e);
-            // non-fatal: continue without storage key
+            console.error("R2 put failed for tender PDF", e);
+            await refundCredit(db, companyId);
+            return new Response(
+              JSON.stringify({
+                detail: "Failed to persist tender PDF. Your credit has been refunded.",
+              }),
+              { status: 500, headers: { "content-type": "application/json" } },
+            );
           }
         } else {
-          console.warn("STORAGE binding not available, skipping R2 put for tender");
+          console.warn("STORAGE binding not available, skipping R2 put for tender (preview mode)");
         }
 
-        // AI analysis (can fail)
         let aiResult;
         try {
           aiResult = await analyzeTenderWithAi(pdfText);
         } catch (e) {
           await refundCredit(db, companyId);
+          // Clean up R2 object if we already stored it
+          if (pdfStorageKey && storage) {
+            try {
+              await storage.delete(pdfStorageKey);
+            } catch {
+              // ignore cleanup failure
+            }
+          }
           const msg = e instanceof Error ? e.message : "AI analysis failed";
           const isRateLimit = /rate limit/i.test(msg);
           const status = isRateLimit ? 429 : 502;
@@ -166,7 +178,6 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           );
         }
 
-        // Fetch compliance docs for scoring
         let complianceDocs: (typeof complianceDocuments.$inferSelect)[] = [];
         try {
           complianceDocs = await (
@@ -178,7 +189,6 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           complianceDocs = [];
         }
 
-        // Map to scoring input
         const companyForScoring = {
           bbbeeLevel: company.bbbeeLevel,
           cidbCrsNum: company.cidbCrsNum,
@@ -208,13 +218,15 @@ export const Route = createFileRoute("/api/tenders/analyze")({
             required_cidb: aiResult.required_cidb,
             closing_date: aiResult.closing_date,
             mandatory_returnables: aiResult.mandatory_returnables ?? [],
+            evaluation_criteria: aiResult.evaluation_criteria ?? [],
           },
           companyForScoring,
           docsForScoring,
-          preferenceSystem,
+          preferenceSystem as "80/20" | "90/10",
         );
 
         const returnables = aiResult.mandatory_returnables ?? [];
+        const evaluationCriteria = aiResult.evaluation_criteria ?? [];
         const returnableStatus: Record<
           string,
           { verified: boolean; verified_at: string | null; doc_ref: string | null }
@@ -236,6 +248,7 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           requiredCidbGrade: aiResult.required_cidb ?? null,
           preferencePointSystem: preferenceSystem,
           parsedReturnables: JSON.stringify(returnables),
+          evaluationCriteria: JSON.stringify(evaluationCriteria),
           fitScore: scoring.fitScore,
           riskFlags: JSON.stringify(scoring.riskFlags),
           eligibleBbbeePoints: scoring.eligibleBbbeePoints,
@@ -249,6 +262,13 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           await db.insert(tenders).values(row);
         } catch (e) {
           console.error("Failed to insert tender", e);
+          if (pdfStorageKey && storage) {
+            try {
+              await storage.delete(pdfStorageKey);
+            } catch {
+              // ignore
+            }
+          }
           await refundCredit(db, companyId);
           return new Response(JSON.stringify({ detail: "Failed to save tender" }), {
             status: 500,
@@ -261,12 +281,13 @@ export const Route = createFileRoute("/api/tenders/analyze")({
           tender_title: row.title,
           required_cidb: row.requiredCidbGrade,
           mandatory_returnables: returnables,
+          evaluation_criteria: evaluationCriteria,
           fit_score: scoring.fitScore,
           risk_flags: scoring.riskFlags,
           eligible_bbbee_points: scoring.eligibleBbbeePoints,
           closing_date: row.closingDate,
           returnable_status: returnableStatus,
-          // snake/camel aliases for frontend convenience
+          // Convenience aliases for frontend (kept but documented)
           verdict: scoring.verdict,
           id: tenderId,
         };

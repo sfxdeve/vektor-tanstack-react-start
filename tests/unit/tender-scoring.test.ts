@@ -11,6 +11,7 @@ describe("tender-scoring — domain rules", () => {
     required_cidb: "4EB",
     closing_date: "2025-03-15",
     mandatory_returnables: ["SBD 4", "SBD 6.1"],
+    evaluation_criteria: ["Price 80", "B-BBEE 20"],
   };
 
   const baseCompany = {
@@ -22,15 +23,15 @@ describe("tender-scoring — domain rules", () => {
   it("starts at 100 and deducts Tax -50 when missing", () => {
     const result = scoreTender(baseAi, baseCompany, [], "80/20");
     expect(result.riskFlags.some((f) => f.includes("SARS TCS"))).toBe(true);
-    // Tax -50, COIDA -30, bargaining NBCEI uncovered -15 => 100-95=5 (CIDB covered with 6EB)
-    expect(result.fitScore).toBe(5);
+    // Tax -50, COIDA -30, bargaining WARNING only (no points) => 100-80=20 (CIDB covered with 6EB)
+    expect(result.fitScore).toBe(20);
   });
 
   it("COIDA missing -30", () => {
     const docs = [{ docType: "TAX_PIN", isCompliant: true, bargainingCouncil: null }];
     const result = scoreTender(baseAi, baseCompany, docs, "80/20");
     expect(result.riskFlags.some((f) => f.includes("COIDA"))).toBe(true);
-    expect(result.fitScore).toBe(100 - 30 - 15); // Tax covered, COIDA -30, bargaining -15, cidb covered
+    expect(result.fitScore).toBe(100 - 30); // Tax covered, COIDA -30, bargaining WARNING only, cidb covered
   });
 
   it("CIDB mismatch -20 when contractor grade too low", () => {
@@ -67,7 +68,7 @@ describe("tender-scoring — domain rules", () => {
     expect(result.fitScore).toBe(80);
   });
 
-  it("bargaining council WARNING -15 when uncovered, legacy untagged covers", () => {
+  it("bargaining council WARNING only (no points) when uncovered, legacy untagged covers", () => {
     const docsWithoutBc = [
       { docType: "TAX_PIN", isCompliant: true, bargainingCouncil: null },
       { docType: "COIDA", isCompliant: true, bargainingCouncil: null },
@@ -79,9 +80,9 @@ describe("tender-scoring — domain rules", () => {
           (f.includes("WARNING") && f.includes("Bargaining")) || f.includes("tender falls under"),
       ),
     ).toBe(true);
-    expect(resultUncovered.fitScore).toBe(85); // 100 -15 (Tax/COIDA covered in this test? actually tax/coida covered, so 100-15=85)
+    expect(resultUncovered.fitScore).toBe(100); // WARNING only, no deduction
 
-    // With tagged matching doc, no penalty
+    // With tagged matching doc, no warning
     const docsTagged = [
       { docType: "TAX_PIN", isCompliant: true, bargainingCouncil: null },
       { docType: "COIDA", isCompliant: true, bargainingCouncil: null },
@@ -100,7 +101,7 @@ describe("tender-scoring — domain rules", () => {
     expect(resultLegacy.fitScore).toBe(100);
   });
 
-  it("expired BC docs do not cover", () => {
+  it("expired BC docs do not cover — still WARNING only", () => {
     const past = new Date(Date.now() - 86400000 * 10).toISOString();
     const docsExpired = [
       { docType: "TAX_PIN", isCompliant: true, bargainingCouncil: null },
@@ -113,7 +114,8 @@ describe("tender-scoring — domain rules", () => {
       },
     ];
     const result = scoreTender(baseAi, baseCompany, docsExpired, "80/20");
-    expect(result.fitScore).toBe(85); // uncovered -> -15
+    expect(result.riskFlags.some((f) => f.includes("WARNING"))).toBe(true);
+    expect(result.fitScore).toBe(100); // WARNING only
   });
 
   it("B-BBEE points calculated per preference system", () => {
@@ -136,7 +138,7 @@ describe("tender-scoring — domain rules", () => {
       bargainingCouncil: string | null;
     }> = [];
     const result = scoreTender(baseAi, { ...baseCompany, cidbCrsNum: "1EB" }, docsEmpty, "80/20");
-    // Tax -50, COIDA -30, CIDB -20 (1EB vs 4EB), Bargaining -15 => 100-115 = -15 => clamped 0
+    // Tax -50, COIDA -30, CIDB -20 (1EB vs 4EB), Bargaining WARNING only => 100-100 = 0 => clamped 0
     expect(result.fitScore).toBe(0);
     expect(result.verdict).toBe("NO-GO");
 
@@ -158,5 +160,16 @@ describe("tender-scoring — domain rules", () => {
     const mid = scoreTender(baseAi, midCompany, midDocs, "80/20");
     expect(mid.fitScore).toBe(70);
     expect(mid.verdict).toBe("CAUTION");
+  });
+
+  it("preserves evaluation_criteria throughAiResult without affecting scoring", () => {
+    const docs = [
+      { docType: "TAX_PIN", isCompliant: true, bargainingCouncil: null },
+      { docType: "COIDA", isCompliant: true, bargainingCouncil: null },
+      { docType: "BARGAINING_COUNCIL_GOS", isCompliant: true, bargainingCouncil: "NBCEI" },
+    ];
+    const result = scoreTender(baseAi, baseCompany, docs, "80/20");
+    expect(result.fitScore).toBe(100);
+    expect(baseAi.evaluation_criteria).toHaveLength(2);
   });
 });

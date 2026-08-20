@@ -1,5 +1,25 @@
 import type { TenderRow } from "@/db/schema/tender";
 
+function parseJsonArray(value: string | null | undefined): unknown[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonRecord(value: string | null | undefined): Record<string, unknown> {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function toApiTender(row: TenderRow) {
   return {
     id: row.id,
@@ -10,11 +30,15 @@ export function toApiTender(row: TenderRow) {
     closing_date: row.closingDate,
     required_cidb_grade: row.requiredCidbGrade,
     preference_point_system: row.preferencePointSystem,
-    parsed_returnables: row.parsedReturnables ? JSON.parse(row.parsedReturnables) : [],
+    parsed_returnables: parseJsonArray(row.parsedReturnables),
+    evaluation_criteria: parseJsonArray(
+      (row as unknown as { evaluationCriteria?: string | null }).evaluationCriteria ?? null,
+    ),
     fit_score: row.fitScore,
-    risk_flags: row.riskFlags ? JSON.parse(row.riskFlags) : [],
+    risk_flags: parseJsonArray(row.riskFlags),
     eligible_bbbee_points: row.eligibleBbbeePoints,
-    returnable_status: row.returnableStatus ? JSON.parse(row.returnableStatus) : {},
+    returnable_status: parseJsonRecord(row.returnableStatus),
+    // Canonical key is pdf_storage_key; pdf_storage_path retained as alias for legacy clients
     pdf_storage_key: row.pdfStorageKey,
     pdf_storage_path: row.pdfStorageKey,
     created_at: new Date(row.createdAt).toISOString(),
@@ -27,13 +51,16 @@ export function toAnalysisResponse(row: TenderRow, returnableStatus: Record<stri
     tender_id: row.id,
     tender_title: row.title,
     required_cidb: row.requiredCidbGrade,
-    mandatory_returnables: row.parsedReturnables ? JSON.parse(row.parsedReturnables) : [],
+    mandatory_returnables: parseJsonArray(row.parsedReturnables),
+    evaluation_criteria: parseJsonArray(
+      (row as unknown as { evaluationCriteria?: string | null }).evaluationCriteria ?? null,
+    ),
     fit_score: row.fitScore,
-    risk_flags: row.riskFlags ? JSON.parse(row.riskFlags) : [],
+    risk_flags: parseJsonArray(row.riskFlags),
     eligible_bbbee_points: row.eligibleBbbeePoints,
     closing_date: row.closingDate,
     returnable_status: returnableStatus,
-    // also include tender_id alias for UI convenience
+    // Back-compat alias for UI convenience
     id: row.id,
   };
 }

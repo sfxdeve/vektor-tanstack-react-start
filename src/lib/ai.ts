@@ -10,6 +10,7 @@ export interface AiResult {
   required_cidb: string | null;
   closing_date: string | null;
   mandatory_returnables: string[];
+  evaluation_criteria: string[];
 }
 
 const STUB_FIXTURE: AiResult = {
@@ -25,12 +26,17 @@ const STUB_FIXTURE: AiResult = {
     "CSD Registration Report",
     "CIDB Certificate",
   ],
+  evaluation_criteria: [
+    "Price — 80 points",
+    "Specific Goals (B-BBEE) — 20 points",
+    "Functionality — minimum 70% threshold",
+  ],
 };
 
 async function getEnv(): Promise<Record<string, string | undefined>> {
   const fallback: Record<string, string | undefined> = {};
   if (typeof process !== "undefined" && process.env) {
-    for (const k of ["DEV_AI_STUB", "OPENAI_API_KEY", "AI_GATEWAY_ID", "CF_ACCOUNT_ID"]) {
+    for (const k of ["DEV_AI_STUB", "OPENAI_API_KEY", "AI_GATEWAY_ID"]) {
       fallback[k] = process.env[k];
     }
   }
@@ -50,18 +56,6 @@ export async function analyzeTenderWithAi(pdfText: string): Promise<AiResult> {
   const env = await getEnv();
 
   if (env.DEV_AI_STUB === "1") {
-    // Return stub but try to infer CIDB from pdf text for more realistic tests
-    // If pdf text contains explicit CIDB like 6CE, use that as required_cidb
-    const cidbMatch = pdfText.match(/\b([1-9])\s*([A-Z]{2,3})\b/);
-    if (cidbMatch?.[1] && cidbMatch?.[2]) {
-      const inferred = `${cidbMatch[1]}${cidbMatch[2]}`;
-      // Only override if it's a plausible tender CIDB, not random
-      // Use inferred if pdf text is short stub text containing it explicitly for isolation tests
-      const hasTenderContext = /tender|required|CIDB/i.test(pdfText);
-      if (hasTenderContext) {
-        return { ...STUB_FIXTURE, required_cidb: inferred.toUpperCase() };
-      }
-    }
     return { ...STUB_FIXTURE };
   }
 
@@ -71,13 +65,9 @@ export async function analyzeTenderWithAi(pdfText: string): Promise<AiResult> {
   }
 
   const gatewayId = env.AI_GATEWAY_ID;
-  const accountId = env.CF_ACCOUNT_ID;
 
   let url: string;
-  if (gatewayId && accountId) {
-    url = `https://gateway.ai.cloudflare.com/v1/${accountId}/${gatewayId}/openai/chat/completions`;
-  } else if (gatewayId) {
-    // Some deployments use gatewayId as full path
+  if (gatewayId) {
     url = `https://gateway.ai.cloudflare.com/v1/${gatewayId}/openai/chat/completions`;
   } else {
     url = "https://api.openai.com/v1/chat/completions";
@@ -94,7 +84,8 @@ export async function analyzeTenderWithAi(pdfText: string): Promise<AiResult> {
     "issuing_entity": "string or null (department/municipality name)",
     "required_cidb": "string or null (e.g. 4GB, 6CE)",
     "closing_date": "string or null (ISO date format YYYY-MM-DD if found)",
-    "mandatory_returnables": ["list of required document names like SBD 4, Tax Pin, CSD Report"]
+    "mandatory_returnables": ["list of required document names like SBD 4, Tax Pin, CSD Report"],
+    "evaluation_criteria": ["list of evaluation criteria strings, e.g. Price 80, B-BBEE 20, Functionality threshold"]
 }
 
 Tender text extract:
@@ -131,7 +122,6 @@ Return ONLY the JSON object, no other text.`;
 
   let parsed: unknown = content;
   try {
-    // Extract JSON from possible markdown fences
     let candidate = content;
     if (candidate.includes("```json")) {
       candidate = candidate.split("```json")[1]!.split("```")[0]!.trim();
@@ -152,6 +142,9 @@ Return ONLY the JSON object, no other text.`;
     closing_date: (obj.closing_date as string | null) ?? null,
     mandatory_returnables: Array.isArray(obj.mandatory_returnables)
       ? (obj.mandatory_returnables as string[])
+      : [],
+    evaluation_criteria: Array.isArray(obj.evaluation_criteria)
+      ? (obj.evaluation_criteria as string[])
       : [],
   };
 }

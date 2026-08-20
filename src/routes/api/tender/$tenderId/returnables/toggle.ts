@@ -7,33 +7,9 @@ const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
 ) => unknown;
 
 import { createDb } from "@/db";
-import { companies } from "@/db/schema/company";
 import { tenders } from "@/db/schema/tender";
 import { getSessionFromRequest } from "@/lib/server-auth";
-
-async function fetchOwnedTender(
-  db: ReturnType<typeof createDb>,
-  tenderId: string,
-  userId: string,
-  isAdmin: boolean,
-) {
-  const rows = await (
-    db.select().from(tenders).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof tenders.$inferSelect)[]>
-  )(eq(tenders.id, tenderId));
-  const tender = rows[0];
-  if (!tender) return null;
-  if (isAdmin) return tender;
-  const compRows = await (
-    db.select().from(companies).where as unknown as (
-      c: unknown,
-    ) => Promise<(typeof companies.$inferSelect)[]>
-  )(eq(companies.id, tender.companyId));
-  const company = compRows[0];
-  if (!company || company.userId !== userId) return null;
-  return tender;
-}
+import { fetchOwnedTender } from "@/lib/tender-auth";
 
 export const Route = createFileRoute("/api/tender/$tenderId/returnables/toggle")({
   server: {

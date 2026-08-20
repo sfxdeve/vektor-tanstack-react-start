@@ -43,6 +43,13 @@
       "when": 1787237655076,
       "tag": "0005_panoramic_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787241770987,
+      "tag": "0006_spooky_medusa",
+      "breakpoints": true
     }
   ]
 }

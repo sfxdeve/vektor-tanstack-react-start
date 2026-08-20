@@ -16,6 +16,7 @@ export const tenders = sqliteTable(
     requiredCidbGrade: text("requiredCidbGrade"),
     preferencePointSystem: text("preferencePointSystem").notNull().default("80/20"),
     parsedReturnables: text("parsedReturnables"),
+    evaluationCriteria: text("evaluationCriteria"),
     fitScore: integer("fitScore").notNull(),
     riskFlags: text("riskFlags"),
     eligibleBbbeePoints: real("eligibleBbbeePoints").notNull().default(0),
