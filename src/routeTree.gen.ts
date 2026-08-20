@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -23,8 +24,12 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
 import { Route as ApiCompaniesCompanyIdRouteImport } from './routes/api/companies/$companyId'
+import { Route as ApiDocumentsIdRouteImport } from './routes/api/documents/$id'
+import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/documents/preview-bbbee'
+import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
+import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -44,6 +49,11 @@ const AdminRoute = AdminRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -96,6 +106,22 @@ const ApiCompaniesCompanyIdRoute = ApiCompaniesCompanyIdRouteImport.update({
   path: '/api/companies/$companyId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDocumentsIdRoute = ApiDocumentsIdRouteImport.update({
+  id: '/api/documents/$id',
+  path: '/api/documents/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocumentsPreviewBbbeeRoute =
+  ApiDocumentsPreviewBbbeeRouteImport.update({
+    id: '/api/documents/preview-bbbee',
+    path: '/api/documents/preview-bbbee',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiDocumentsUploadRoute = ApiDocumentsUploadRouteImport.update({
+  id: '/api/documents/upload',
+  path: '/api/documents/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiReferenceBargainingCouncilsRoute =
   ApiReferenceBargainingCouncilsRouteImport.update({
     id: '/api/reference/bargaining-councils',
@@ -107,12 +133,19 @@ const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
   path: '/api/verify/statutory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDocumentsDownloadDocIdRoute =
+  ApiDocumentsDownloadDocIdRouteImport.update({
+    id: '/api/documents/download/$docId',
+    path: '/api/documents/download/$docId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -122,15 +155,20 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/documents/$id': typeof ApiDocumentsIdRoute
+  '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -140,9 +178,13 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/documents/$id': typeof ApiDocumentsIdRoute
+  '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies': typeof ApiCompaniesIndexRoute
+  '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -150,6 +192,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/documents': typeof DocumentsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
@@ -159,9 +202,13 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/documents/$id': typeof ApiDocumentsIdRoute
+  '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,6 +217,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/admin'
     | '/app'
+    | '/documents'
     | '/forgot-password'
     | '/login'
     | '/privacy'
@@ -179,15 +227,20 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/auth/$'
     | '/api/companies/$companyId'
+    | '/api/documents/$id'
+    | '/api/documents/preview-bbbee'
+    | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/documents/download/$docId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/admin'
     | '/app'
+    | '/documents'
     | '/forgot-password'
     | '/login'
     | '/privacy'
@@ -197,15 +250,20 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/auth/$'
     | '/api/companies/$companyId'
+    | '/api/documents/$id'
+    | '/api/documents/preview-bbbee'
+    | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies'
+    | '/api/documents/download/$docId'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/admin'
     | '/app'
+    | '/documents'
     | '/forgot-password'
     | '/login'
     | '/privacy'
@@ -215,9 +273,13 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/auth/$'
     | '/api/companies/$companyId'
+    | '/api/documents/$id'
+    | '/api/documents/preview-bbbee'
+    | '/api/documents/upload'
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/documents/download/$docId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -225,6 +287,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
+  DocumentsRoute: typeof DocumentsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -234,9 +297,13 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
+  ApiDocumentsIdRoute: typeof ApiDocumentsIdRoute
+  ApiDocumentsPreviewBbbeeRoute: typeof ApiDocumentsPreviewBbbeeRoute
+  ApiDocumentsUploadRoute: typeof ApiDocumentsUploadRoute
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
   ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
   ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
+  ApiDocumentsDownloadDocIdRoute: typeof ApiDocumentsDownloadDocIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -267,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -339,6 +413,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesCompanyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/documents/$id': {
+      id: '/api/documents/$id'
+      path: '/api/documents/$id'
+      fullPath: '/api/documents/$id'
+      preLoaderRoute: typeof ApiDocumentsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/documents/preview-bbbee': {
+      id: '/api/documents/preview-bbbee'
+      path: '/api/documents/preview-bbbee'
+      fullPath: '/api/documents/preview-bbbee'
+      preLoaderRoute: typeof ApiDocumentsPreviewBbbeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/documents/upload': {
+      id: '/api/documents/upload'
+      path: '/api/documents/upload'
+      fullPath: '/api/documents/upload'
+      preLoaderRoute: typeof ApiDocumentsUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/reference/bargaining-councils': {
       id: '/api/reference/bargaining-councils'
       path: '/api/reference/bargaining-councils'
@@ -353,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVerifyStatutoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/documents/download/$docId': {
+      id: '/api/documents/download/$docId'
+      path: '/api/documents/download/$docId'
+      fullPath: '/api/documents/download/$docId'
+      preLoaderRoute: typeof ApiDocumentsDownloadDocIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -361,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
   AppRoute: AppRoute,
+  DocumentsRoute: DocumentsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
@@ -370,9 +473,13 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
+  ApiDocumentsIdRoute: ApiDocumentsIdRoute,
+  ApiDocumentsPreviewBbbeeRoute: ApiDocumentsPreviewBbbeeRoute,
+  ApiDocumentsUploadRoute: ApiDocumentsUploadRoute,
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
   ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
   ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
+  ApiDocumentsDownloadDocIdRoute: ApiDocumentsDownloadDocIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
