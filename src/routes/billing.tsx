@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import { ReferralWidget } from "@/components/referral-widget";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -348,6 +349,8 @@ function BillingPage() {
               </div>
             </CardContent>
           </Card>
+
+          <ReferralWidget />
 
           {/* My EFT payments */}
           {activeEfts.length > 0 && (

@@ -70,6 +70,18 @@ function SignupPage() {
           },
         },
       );
+      // Attribution: if signup carried ?ref=, link invitee -> referrer (first-code-wins, self-blocked)
+      if (refCode) {
+        try {
+          await fetch("/api/referrals/claim", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ code: refCode }),
+          });
+        } catch {
+          // non-blocking — referral attribution is best-effort
+        }
+      }
       toast.success("Account created — welcome to Vektor");
       await navigate({ to: "/app" });
     } catch (err) {

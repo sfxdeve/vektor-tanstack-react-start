@@ -27,6 +27,8 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBillingPackagesRouteImport } from './routes/api/billing/packages'
 import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
 import { Route as ApiCompaniesCompanyIdRouteImport } from './routes/api/companies/$companyId'
+import { Route as ApiDashboardActivityRouteImport } from './routes/api/dashboard/activity'
+import { Route as ApiDevSetRoleRouteImport } from './routes/api/dev/set-role'
 import { Route as ApiDocumentsIdRouteImport } from './routes/api/documents/$id'
 import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/documents/preview-bbbee'
 import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
@@ -34,6 +36,9 @@ import { Route as ApiEftBankDetailsRouteImport } from './routes/api/eft/bank-det
 import { Route as ApiEftMyRequestsRouteImport } from './routes/api/eft/my-requests'
 import { Route as ApiEftRequestRouteImport } from './routes/api/eft/request'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
+import { Route as ApiReferralsClaimRouteImport } from './routes/api/referrals/claim'
+import { Route as ApiReferralsLookupRouteImport } from './routes/api/referrals/lookup'
+import { Route as ApiReferralsMyRouteImport } from './routes/api/referrals/my'
 import { Route as ApiTenderTenderIdRouteImport } from './routes/api/tender/$tenderId'
 import { Route as ApiTendersCompanyIdRouteImport } from './routes/api/tenders/$companyId'
 import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/analyze'
@@ -141,6 +146,16 @@ const ApiCompaniesCompanyIdRoute = ApiCompaniesCompanyIdRouteImport.update({
   path: '/api/companies/$companyId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDashboardActivityRoute = ApiDashboardActivityRouteImport.update({
+  id: '/api/dashboard/activity',
+  path: '/api/dashboard/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevSetRoleRoute = ApiDevSetRoleRouteImport.update({
+  id: '/api/dev/set-role',
+  path: '/api/dev/set-role',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDocumentsIdRoute = ApiDocumentsIdRouteImport.update({
   id: '/api/documents/$id',
   path: '/api/documents/$id',
@@ -178,6 +193,21 @@ const ApiReferenceBargainingCouncilsRoute =
     path: '/api/reference/bargaining-councils',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiReferralsClaimRoute = ApiReferralsClaimRouteImport.update({
+  id: '/api/referrals/claim',
+  path: '/api/referrals/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReferralsLookupRoute = ApiReferralsLookupRouteImport.update({
+  id: '/api/referrals/lookup',
+  path: '/api/referrals/lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReferralsMyRoute = ApiReferralsMyRouteImport.update({
+  id: '/api/referrals/my',
+  path: '/api/referrals/my',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTenderTenderIdRoute = ApiTenderTenderIdRouteImport.update({
   id: '/api/tender/$tenderId',
   path: '/api/tender/$tenderId',
@@ -285,6 +315,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
@@ -292,6 +324,9 @@ export interface FileRoutesByFullPath {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/referrals/claim': typeof ApiReferralsClaimRoute
+  '/api/referrals/lookup': typeof ApiReferralsLookupRoute
+  '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -328,6 +363,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
@@ -335,6 +372,9 @@ export interface FileRoutesByTo {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/referrals/claim': typeof ApiReferralsClaimRoute
+  '/api/referrals/lookup': typeof ApiReferralsLookupRoute
+  '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -372,6 +412,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
+  '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
   '/api/documents/upload': typeof ApiDocumentsUploadRoute
@@ -379,6 +421,9 @@ export interface FileRoutesById {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
+  '/api/referrals/claim': typeof ApiReferralsClaimRoute
+  '/api/referrals/lookup': typeof ApiReferralsLookupRoute
+  '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -417,6 +462,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
+    | '/api/dashboard/activity'
+    | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
@@ -424,6 +471,9 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
+    | '/api/referrals/claim'
+    | '/api/referrals/lookup'
+    | '/api/referrals/my'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -460,6 +510,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
+    | '/api/dashboard/activity'
+    | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
@@ -467,6 +519,9 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
+    | '/api/referrals/claim'
+    | '/api/referrals/lookup'
+    | '/api/referrals/my'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -503,6 +558,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/billing/packages'
     | '/api/companies/$companyId'
+    | '/api/dashboard/activity'
+    | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
     | '/api/documents/upload'
@@ -510,6 +567,9 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
+    | '/api/referrals/claim'
+    | '/api/referrals/lookup'
+    | '/api/referrals/my'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -547,6 +607,8 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBillingPackagesRoute: typeof ApiBillingPackagesRoute
   ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
+  ApiDashboardActivityRoute: typeof ApiDashboardActivityRoute
+  ApiDevSetRoleRoute: typeof ApiDevSetRoleRoute
   ApiDocumentsIdRoute: typeof ApiDocumentsIdRoute
   ApiDocumentsPreviewBbbeeRoute: typeof ApiDocumentsPreviewBbbeeRoute
   ApiDocumentsUploadRoute: typeof ApiDocumentsUploadRoute
@@ -554,6 +616,9 @@ export interface RootRouteChildren {
   ApiEftMyRequestsRoute: typeof ApiEftMyRequestsRoute
   ApiEftRequestRoute: typeof ApiEftRequestRouteWithChildren
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
+  ApiReferralsClaimRoute: typeof ApiReferralsClaimRoute
+  ApiReferralsLookupRoute: typeof ApiReferralsLookupRoute
+  ApiReferralsMyRoute: typeof ApiReferralsMyRoute
   ApiTenderTenderIdRoute: typeof ApiTenderTenderIdRouteWithChildren
   ApiTendersCompanyIdRoute: typeof ApiTendersCompanyIdRoute
   ApiTendersAnalyzeRoute: typeof ApiTendersAnalyzeRoute
@@ -697,6 +762,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesCompanyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dashboard/activity': {
+      id: '/api/dashboard/activity'
+      path: '/api/dashboard/activity'
+      fullPath: '/api/dashboard/activity'
+      preLoaderRoute: typeof ApiDashboardActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/set-role': {
+      id: '/api/dev/set-role'
+      path: '/api/dev/set-role'
+      fullPath: '/api/dev/set-role'
+      preLoaderRoute: typeof ApiDevSetRoleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents/$id': {
       id: '/api/documents/$id'
       path: '/api/documents/$id'
@@ -744,6 +823,27 @@ declare module '@tanstack/react-router' {
       path: '/api/reference/bargaining-councils'
       fullPath: '/api/reference/bargaining-councils'
       preLoaderRoute: typeof ApiReferenceBargainingCouncilsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/referrals/claim': {
+      id: '/api/referrals/claim'
+      path: '/api/referrals/claim'
+      fullPath: '/api/referrals/claim'
+      preLoaderRoute: typeof ApiReferralsClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/referrals/lookup': {
+      id: '/api/referrals/lookup'
+      path: '/api/referrals/lookup'
+      fullPath: '/api/referrals/lookup'
+      preLoaderRoute: typeof ApiReferralsLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/referrals/my': {
+      id: '/api/referrals/my'
+      path: '/api/referrals/my'
+      fullPath: '/api/referrals/my'
+      preLoaderRoute: typeof ApiReferralsMyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tender/$tenderId': {
@@ -907,6 +1007,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBillingPackagesRoute: ApiBillingPackagesRoute,
   ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
+  ApiDashboardActivityRoute: ApiDashboardActivityRoute,
+  ApiDevSetRoleRoute: ApiDevSetRoleRoute,
   ApiDocumentsIdRoute: ApiDocumentsIdRoute,
   ApiDocumentsPreviewBbbeeRoute: ApiDocumentsPreviewBbbeeRoute,
   ApiDocumentsUploadRoute: ApiDocumentsUploadRoute,
@@ -914,6 +1016,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEftMyRequestsRoute: ApiEftMyRequestsRoute,
   ApiEftRequestRoute: ApiEftRequestRouteWithChildren,
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
+  ApiReferralsClaimRoute: ApiReferralsClaimRoute,
+  ApiReferralsLookupRoute: ApiReferralsLookupRoute,
+  ApiReferralsMyRoute: ApiReferralsMyRoute,
   ApiTenderTenderIdRoute: ApiTenderTenderIdRouteWithChildren,
   ApiTendersCompanyIdRoute: ApiTendersCompanyIdRoute,
   ApiTendersAnalyzeRoute: ApiTendersAnalyzeRoute,

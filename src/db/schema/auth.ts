@@ -14,10 +14,17 @@ export const user = sqliteTable(
     banned: integer("banned", { mode: "boolean" }).default(false),
     banReason: text("banReason"),
     banExpires: integer("banExpires", { mode: "timestamp" }),
+    referralCode: text("referralCode"),
+    referredByUserId: text("referredByUserId"),
+    referredByCode: text("referredByCode"),
+    referredAt: integer("referredAt", { mode: "timestamp" }),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
   },
-  (t) => [index("user_role_idx").on(t.role)],
+  (t) => [
+    index("user_role_idx").on(t.role),
+    uniqueIndex("user_referral_code_unique").on(t.referralCode),
+  ],
 );
 
 export const session = sqliteTable("session", {

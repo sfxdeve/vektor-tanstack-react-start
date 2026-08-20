@@ -57,6 +57,13 @@
       "when": 1787250119063,
       "tag": "0007_faulty_virginia_dare",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787255282440,
+      "tag": "0008_gigantic_sasquatch",
+      "breakpoints": true
     }
   ]
 }

@@ -3,9 +3,11 @@ import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { env as cloudflareEnv } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
 
 import { createDb } from "@/db";
 import * as schema from "@/db/schema";
+import { REF_ALPHABET } from "@/lib/eft";
 
 export interface CreateAuthOptions {
   baseURL?: string;
@@ -20,12 +22,70 @@ export function createAuth(d1: D1Database, options?: CreateAuthOptions) {
       provider: "sqlite",
       schema,
     }),
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (createdUser) => {
+            try {
+              // Generate VEK-XXXXXX referral code for every new user, retry on collision.
+              const d1 = (cloudflareEnv as unknown as { DB?: D1Database }).DB;
+              const targetDb = d1 ? createDb(d1 as unknown as D1Database) : db;
+              const existing = (createdUser as unknown as { referralCode?: string }).referralCode;
+              if (existing) return;
+              const userId = (createdUser as unknown as { id: string }).id;
+              for (let attempt = 0; attempt < 5; attempt++) {
+                let suffix = "";
+                for (let i = 0; i < 6; i++) {
+                  suffix += REF_ALPHABET[Math.floor(Math.random() * REF_ALPHABET.length)]!;
+                }
+                const code = `VEK-${suffix}`;
+                const clash = await (
+                  targetDb.select().from(schema.user).where as unknown as (
+                    c: unknown,
+                  ) => Promise<(typeof schema.user.$inferSelect)[]>
+                )(eq(schema.user.referralCode, code));
+                if (clash.length > 0) continue;
+                try {
+                  await (
+                    targetDb.update(schema.user).set as unknown as (v: unknown) => {
+                      where: (c: unknown) => Promise<unknown>;
+                    }
+                  )({ referralCode: code, updatedAt: new Date() }).where(
+                    eq(schema.user.id, userId),
+                  );
+                  break;
+                } catch {
+                  continue;
+                }
+              }
+            } catch {
+              // best-effort: referral code generation failure must not block signup
+            }
+          },
+        },
+      },
+    },
     user: {
       additionalFields: {
         role: {
           type: "string",
           required: false,
           defaultValue: "user",
+          input: false,
+        },
+        referralCode: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+        referredByUserId: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+        referredByCode: {
+          type: "string",
+          required: false,
           input: false,
         },
       },
