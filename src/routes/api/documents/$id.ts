@@ -9,36 +9,9 @@ const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { complianceDocuments, sentReminders } from "@/db/schema/compliance";
-import { VALID_DOC_TYPES, validateBargainingCouncil } from "@/lib/compliance";
-
-async function getSession(request: Request) {
-  const { createAuth } = await import("@/lib/auth/auth");
-  const auth = createAuth(env.DB as unknown as D1Database);
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session;
-}
-
-function toApiDoc(row: typeof complianceDocuments.$inferSelect) {
-  const expiry = row.expiryDate ? new Date(row.expiryDate).toISOString().slice(0, 10) : null;
-  const extractedExpiry = row.extractedExpiryDate
-    ? new Date(row.extractedExpiryDate).toISOString().slice(0, 10)
-    : null;
-  return {
-    id: row.id,
-    company_id: row.companyId,
-    doc_type: row.docType,
-    file_name: row.fileName,
-    expiry_date: expiry,
-    is_compliant: Boolean(row.isCompliant),
-    storage_path: row.storageKey,
-    storage_key: row.storageKey,
-    bargaining_council: row.bargainingCouncil ?? null,
-    extracted_bbbee_level: row.extractedBbbeeLevel ?? null,
-    extracted_expiry_date: extractedExpiry,
-    created_at: new Date(row.createdAt).toISOString(),
-    updated_at: new Date(row.updatedAt).toISOString(),
-  };
-}
+import { isBcGos, validateBargainingCouncil } from "@/lib/compliance";
+import { toApiDoc } from "@/lib/document-api";
+import { getSessionFromRequest } from "@/lib/server-auth";
 
 async function fetchOwnedDocument(
   db: ReturnType<typeof createDb>,
@@ -64,52 +37,43 @@ async function fetchOwnedDocument(
   return doc;
 }
 
+async function deleteR2AndReminders(
+  storage: R2Bucket | undefined,
+  doc: typeof complianceDocuments.$inferSelect,
+  db: ReturnType<typeof createDb>,
+) {
+  if (doc.storageKey && storage) {
+    try {
+      await storage.delete(doc.storageKey);
+    } catch (e) {
+      console.warn("R2 delete failed", e);
+    }
+  }
+  try {
+    await (db.delete(sentReminders).where as unknown as (c: unknown) => Promise<unknown>)(
+      eq(sentReminders.documentId, doc.id),
+    );
+  } catch (e) {
+    console.warn("Failed to delete sent_reminders", doc.id, e);
+  }
+}
+
 export const Route = createFileRoute("/api/documents/$id")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
             headers: { "content-type": "application/json" },
           });
         }
-        const id = (params as Record<string, string>).id;
+        const docId = (params as Record<string, string>).id!;
         const db = createDb(env.DB as unknown as D1Database);
         const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
 
-        // First, try as companyId listing
-        const companyRows = await (
-          db.select().from(companies).where as unknown as (
-            c: unknown,
-          ) => Promise<(typeof companies.$inferSelect)[]>
-        )(eq(companies.id, id));
-        const company = companyRows[0];
-        if (company) {
-          if (!isAdmin && company.userId !== session.user.id) {
-            return new Response(
-              JSON.stringify({ detail: "You don't have access to this company" }),
-              {
-                status: 403,
-                headers: { "content-type": "application/json" },
-              },
-            );
-          }
-          const docs = await (
-            db.select().from(complianceDocuments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof complianceDocuments.$inferSelect)[]>
-          )(eq(complianceDocuments.companyId, id));
-          // Sort by createdAt desc
-          docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          return new Response(JSON.stringify(docs.map(toApiDoc)), {
-            headers: { "content-type": "application/json" },
-          });
-        }
-
-        // Otherwise try as single document fetch
-        const doc = await fetchOwnedDocument(db, id!, session.user.id!, isAdmin);
+        const doc = await fetchOwnedDocument(db, docId, session.user.id!, isAdmin);
         if (!doc) {
           return new Response(JSON.stringify({ detail: "Document not found" }), {
             status: 404,
@@ -121,14 +85,14 @@ export const Route = createFileRoute("/api/documents/$id")({
         });
       },
       DELETE: async ({ request, params }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
             headers: { "content-type": "application/json" },
           });
         }
-        const docId = (params as Record<string, string>).id;
+        const docId = (params as Record<string, string>).id!;
         const db = createDb(env.DB as unknown as D1Database);
         const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
 
@@ -144,7 +108,6 @@ export const Route = createFileRoute("/api/documents/$id")({
             headers: { "content-type": "application/json" },
           });
         }
-        // Ownership check via company
         if (!isAdmin) {
           const compRows = await (
             db.select().from(companies).where as unknown as (
@@ -152,7 +115,7 @@ export const Route = createFileRoute("/api/documents/$id")({
             ) => Promise<(typeof companies.$inferSelect)[]>
           )(eq(companies.id, doc.companyId));
           const company = compRows[0];
-          if (!company || company.userId !== session.user.id) {
+          if (!company || company.userId !== session.user.id!) {
             return new Response(
               JSON.stringify({ detail: "You don't have access to this document" }),
               {
@@ -164,17 +127,7 @@ export const Route = createFileRoute("/api/documents/$id")({
         }
 
         const storage = (env as unknown as { STORAGE?: R2Bucket }).STORAGE;
-        if (doc.storageKey && storage) {
-          try {
-            await storage.delete(doc.storageKey);
-          } catch (e) {
-            console.warn("R2 delete failed", e);
-          }
-        }
-
-        await (db.delete(sentReminders).where as unknown as (c: unknown) => Promise<unknown>)(
-          eq(sentReminders.documentId, docId),
-        );
+        await deleteR2AndReminders(storage, doc, db);
         await (db.delete(complianceDocuments).where as unknown as (c: unknown) => Promise<unknown>)(
           eq(complianceDocuments.id, docId),
         );
@@ -184,14 +137,14 @@ export const Route = createFileRoute("/api/documents/$id")({
         });
       },
       PATCH: async ({ request, params }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
             headers: { "content-type": "application/json" },
           });
         }
-        const docId = (params as Record<string, string>).id;
+        const docId = (params as Record<string, string>).id!;
         const db = createDb(env.DB as unknown as D1Database);
         const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
 
@@ -214,7 +167,7 @@ export const Route = createFileRoute("/api/documents/$id")({
             ) => Promise<(typeof companies.$inferSelect)[]>
           )(eq(companies.id, doc.companyId));
           const company = compRows[0];
-          if (!company || company.userId !== session.user.id) {
+          if (!company || company.userId !== session.user.id!) {
             return new Response(
               JSON.stringify({ detail: "You don't have access to this document" }),
               {
@@ -262,9 +215,8 @@ export const Route = createFileRoute("/api/documents/$id")({
 
         if ("bargaining_council" in body || "bargainingCouncil" in body) {
           const raw = (body.bargaining_council ?? body.bargainingCouncil) as string | null;
-          // Only valid for BC docs
-          if (doc.docType !== "BARGAINING_COUNCIL_GOS") {
-            // Ignore silently for other types, same as upload
+          if (!isBcGos(doc.docType)) {
+            // Ignore silently for non-BC types
           } else {
             try {
               const normalized = validateBargainingCouncil(doc.docType, raw);
@@ -276,35 +228,6 @@ export const Route = createFileRoute("/api/documents/$id")({
                 headers: { "content-type": "application/json" },
               });
             }
-          }
-        }
-
-        if ("doc_type" in body || "docType" in body) {
-          const raw = (body.doc_type ?? body.docType) as string | null;
-          if (raw) {
-            const normalized = String(raw).trim().toUpperCase();
-            if (!VALID_DOC_TYPES.has(normalized)) {
-              return new Response(JSON.stringify({ detail: `Invalid doc_type: ${normalized}` }), {
-                status: 400,
-                headers: { "content-type": "application/json" },
-              });
-            }
-            // Allow changing doc_type? For simplicity allow but validate BC tag
-            if (normalized === "BARGAINING_COUNCIL_GOS") {
-              const bcRaw = (body.bargaining_council ??
-                body.bargainingCouncil ??
-                doc.bargainingCouncil) as string | null;
-              try {
-                validateBargainingCouncil(normalized, bcRaw);
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : "Invalid bargaining council";
-                return new Response(JSON.stringify({ detail: msg }), {
-                  status: 400,
-                  headers: { "content-type": "application/json" },
-                });
-              }
-            }
-            updates.docType = normalized;
           }
         }
 

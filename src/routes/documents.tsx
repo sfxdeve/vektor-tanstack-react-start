@@ -17,6 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { authClient } from "@/lib/auth/auth-client";
+import {
+  NEEDS_EXPIRY_TYPES,
+  isBbbeeMismatch,
+  isBcGos,
+  isExpiryMismatch,
+  type DocType,
+  type VaultDocMutation,
+} from "@/lib/compliance";
 
 export const Route = createFileRoute("/documents")({
   component: DocumentsPage,
@@ -44,7 +52,7 @@ type VaultDoc = {
   created_at: string;
 };
 
-const PREVIEW_TYPES = new Set(["BBBEE", "COIDA", "TAX_PIN", "BARGAINING_COUNCIL_GOS"]);
+const PREVIEW_TYPES = NEEDS_EXPIRY_TYPES;
 
 function DocumentsPage() {
   const navigate = useNavigate();
@@ -63,18 +71,18 @@ function DocumentsPage() {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editingDoc, setEditingDoc] = useState<VaultDoc | null>(null);
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<VaultDocMutation>({
     expiry_date: "",
     is_compliant: true,
-    bargaining_council: "",
+    bargaining_council: null,
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<VaultDocMutation & { doc_type: string }>({
     doc_type: "",
     expiry_date: "",
     is_compliant: true,
-    bargaining_council: "",
+    bargaining_council: null,
   });
   const [councilCatalog, setCouncilCatalog] = useState<
     Array<{
@@ -139,7 +147,7 @@ function DocumentsPage() {
   const fetchDocuments = useCallback(async (companyId: string) => {
     setFetchingDocs(true);
     try {
-      const res = await fetch(`/api/documents/${companyId}`);
+      const res = await fetch(`/api/documents/company/${companyId}`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { detail?: string }).detail || "Failed to fetch documents");
@@ -164,7 +172,7 @@ function DocumentsPage() {
   // Preview extraction when file or doc_type changes
   useEffect(() => {
     setBbbeePreview(null);
-    if (!PREVIEW_TYPES.has(formData.doc_type) || !uploadFile) return;
+    if (!PREVIEW_TYPES.has(formData.doc_type as DocType) || !uploadFile) return;
     let cancelled = false;
     setPreviewLoading(true);
     const fd = new FormData();
@@ -203,7 +211,7 @@ function DocumentsPage() {
       toast.error("Document type, file, and expiry date are required");
       return;
     }
-    if (formData.doc_type === "BARGAINING_COUNCIL_GOS" && !formData.bargaining_council) {
+    if (isBcGos(formData.doc_type) && !formData.bargaining_council) {
       toast.error("Please pick which Bargaining Council this letter is for");
       return;
     }
@@ -216,13 +224,13 @@ function DocumentsPage() {
       multipart.append("doc_type", formData.doc_type);
       multipart.append("expiry_date", formData.expiry_date);
       multipart.append("is_compliant", String(formData.is_compliant));
-      if (formData.doc_type === "BARGAINING_COUNCIL_GOS") {
-        multipart.append("bargaining_council", formData.bargaining_council);
+      if (isBcGos(formData.doc_type)) {
+        multipart.append("bargaining_council", formData.bargaining_council!);
       }
 
       const replacingExisting = documents.some((d) => {
         if (d.doc_type !== formData.doc_type) return false;
-        if (formData.doc_type === "BARGAINING_COUNCIL_GOS") {
+        if (isBcGos(formData.doc_type)) {
           return d.bargaining_council === formData.bargaining_council;
         }
         return true;
@@ -248,7 +256,7 @@ function DocumentsPage() {
             `Certificate says B-BBEE Level ${uploaded.extracted_bbbee_level}. Add it to your Company Setup to earn preference points on tender analysis.`,
             { duration: 9000 },
           );
-        } else if (Number(profileLevel) !== Number(uploaded.extracted_bbbee_level)) {
+        } else if (isBbbeeMismatch(profileLevel, uploaded.extracted_bbbee_level)) {
           toast.warning(
             `Mismatch: your profile says Level ${profileLevel} but the uploaded certificate says Level ${uploaded.extracted_bbbee_level}. Update whichever is wrong before your next tender analysis.`,
             { duration: 12000 },
@@ -256,18 +264,14 @@ function DocumentsPage() {
         }
       }
 
-      if (
-        uploaded.extracted_expiry_date &&
-        formData.expiry_date &&
-        uploaded.extracted_expiry_date !== formData.expiry_date
-      ) {
+      if (isExpiryMismatch(formData.expiry_date, uploaded.extracted_expiry_date)) {
         toast.warning(
           `Expiry mismatch: you typed ${formData.expiry_date}, but the document itself reads ${uploaded.extracted_expiry_date}. Update whichever is wrong so reminder emails fire at the right time.`,
           { duration: 12000 },
         );
       }
 
-      setFormData({ doc_type: "", expiry_date: "", is_compliant: true, bargaining_council: "" });
+      setFormData({ doc_type: "", expiry_date: "", is_compliant: true, bargaining_council: null });
       setUploadFile(null);
       // reset file input value via DOM
       const fileInput = document.getElementById("file_name") as HTMLInputElement | null;
@@ -328,7 +332,7 @@ function DocumentsPage() {
     setEditForm({
       expiry_date: doc.expiry_date ? doc.expiry_date.slice(0, 10) : "",
       is_compliant: doc.is_compliant,
-      bargaining_council: doc.bargaining_council ?? "",
+      bargaining_council: doc.bargaining_council ?? null,
     });
   };
 
@@ -338,7 +342,7 @@ function DocumentsPage() {
       toast.error("Expiry date is required");
       return;
     }
-    if (editingDoc.doc_type === "BARGAINING_COUNCIL_GOS" && !editForm.bargaining_council) {
+    if (isBcGos(editingDoc.doc_type) && !editForm.bargaining_council) {
       toast.error("Bargaining council is required");
       return;
     }
@@ -348,7 +352,7 @@ function DocumentsPage() {
         expiry_date: editForm.expiry_date,
         is_compliant: editForm.is_compliant,
       };
-      if (editingDoc.doc_type === "BARGAINING_COUNCIL_GOS") {
+      if (isBcGos(editingDoc.doc_type)) {
         payload.bargaining_council = editForm.bargaining_council;
       }
       const res = await fetch(`/api/documents/${editingDoc.id}`, {
@@ -517,7 +521,7 @@ function DocumentsPage() {
                         B-BBEE Commission Portal ↗
                       </a>
                     )}
-                    {formData.doc_type === "BARGAINING_COUNCIL_GOS" && (
+                    {isBcGos(formData.doc_type) && (
                       <div className="mt-3" data-testid="bc-picker-wrapper">
                         <Label
                           htmlFor="bc_code"
@@ -532,7 +536,7 @@ function DocumentsPage() {
                               bargaining_council: value as string,
                             }))
                           }
-                          value={formData.bargaining_council}
+                          value={formData.bargaining_council ?? ""}
                         >
                           <SelectTrigger
                             id="bc_code"
@@ -597,7 +601,7 @@ function DocumentsPage() {
                       }
                       className="mt-2 rounded-sm bg-white"
                     />
-                    {PREVIEW_TYPES.has(formData.doc_type) && previewLoading && (
+                    {PREVIEW_TYPES.has(formData.doc_type as DocType) && previewLoading && (
                       <p
                         className="mt-1.5 text-[11px] text-zinc-500"
                         data-testid="bbbee-preview-loading"
@@ -605,7 +609,7 @@ function DocumentsPage() {
                         Reading certificate…
                       </p>
                     )}
-                    {PREVIEW_TYPES.has(formData.doc_type) &&
+                    {PREVIEW_TYPES.has(formData.doc_type as DocType) &&
                       bbbeePreview?.expiry &&
                       !previewLoading && (
                         <div
@@ -652,14 +656,12 @@ function DocumentsPage() {
                         data-testid="bbbee-preview-level"
                       >
                         Also detected on cert: <strong>B-BBEE Level {bbbeePreview.level}</strong>
-                        {selectedCompany?.bbbee_level != null &&
-                          Number(selectedCompany.bbbee_level) !== Number(bbbeePreview.level) && (
-                            <span className="text-orange-700">
-                              {" "}
-                              — doesn&apos;t match your profile (Level {selectedCompany.bbbee_level}
-                              )
-                            </span>
-                          )}
+                        {isBbbeeMismatch(selectedCompany?.bbbee_level, bbbeePreview.level) && (
+                          <span className="text-orange-700">
+                            {" "}
+                            — doesn&apos;t match your profile (Level {selectedCompany?.bbbee_level})
+                          </span>
+                        )}
                       </p>
                     )}
                   </div>
@@ -728,7 +730,7 @@ function DocumentsPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-zinc-50 border-b border-zinc-200">
+                    <thead className="sticky top-0 z-10 bg-zinc-50 border-b border-zinc-200">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-zinc-700">
                           Type
@@ -763,36 +765,37 @@ function DocumentsPage() {
                         return (
                           <tr
                             key={doc.id}
-                            className="hover:bg-zinc-50 transition-colors"
+                            className="odd:bg-white even:bg-zinc-50/60 hover:bg-zinc-100 transition-colors"
                             data-testid={`doc-row-${doc.id}`}
                           >
                             <td className="px-6 py-4 text-sm font-medium">
                               {doc.doc_type.replace(/_/g, " ")}
-                              {doc.doc_type === "BARGAINING_COUNCIL_GOS" &&
-                                doc.bargaining_council && (
-                                  <span
-                                    data-testid={`doc-council-${doc.id}`}
-                                    className="ml-2 inline-flex items-center rounded-sm bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-700"
-                                    title={councilLabel(doc.bargaining_council)}
-                                  >
-                                    {doc.bargaining_council.replace(/_/g, " ")}
-                                  </span>
-                                )}
+                              {isBcGos(doc.doc_type) && doc.bargaining_council && (
+                                <span
+                                  data-testid={`doc-council-${doc.id}`}
+                                  className="ml-2 inline-flex items-center rounded-sm bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-700"
+                                  title={councilLabel(doc.bargaining_council)}
+                                >
+                                  {doc.bargaining_council.replace(/_/g, " ")}
+                                </span>
+                              )}
                               {doc.doc_type === "BBBEE" && doc.extracted_bbbee_level != null && (
                                 <span
                                   data-testid={`doc-bbbee-cert-level-${doc.id}`}
                                   className={`ml-2 inline-flex items-center rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${
-                                    selectedCompany?.bbbee_level != null &&
-                                    Number(selectedCompany.bbbee_level) !==
-                                      Number(doc.extracted_bbbee_level)
+                                    isBbbeeMismatch(
+                                      selectedCompany?.bbbee_level,
+                                      doc.extracted_bbbee_level,
+                                    )
                                       ? "bg-orange-100 text-orange-800"
                                       : "bg-zinc-100 text-zinc-700"
                                   }`}
                                 >
-                                  {selectedCompany?.bbbee_level != null &&
-                                  Number(selectedCompany.bbbee_level) !==
-                                    Number(doc.extracted_bbbee_level)
-                                    ? `Cert L${doc.extracted_bbbee_level} ≠ Profile L${selectedCompany.bbbee_level}`
+                                  {isBbbeeMismatch(
+                                    selectedCompany?.bbbee_level,
+                                    doc.extracted_bbbee_level,
+                                  )
+                                    ? `Cert L${doc.extracted_bbbee_level} ≠ Profile L${selectedCompany?.bbbee_level}`
                                     : `Cert L${doc.extracted_bbbee_level}`}
                                 </span>
                               )}
@@ -816,17 +819,15 @@ function DocumentsPage() {
                                     : "—"}
                                 </span>
                               </div>
-                              {["BBBEE", "COIDA", "TAX_PIN", "BARGAINING_COUNCIL_GOS"].includes(
-                                doc.doc_type,
-                              ) &&
-                                doc.extracted_expiry_date &&
-                                doc.extracted_expiry_date !== doc.expiry_date && (
+                              {NEEDS_EXPIRY_TYPES.has(doc.doc_type as DocType) &&
+                                isExpiryMismatch(doc.expiry_date, doc.extracted_expiry_date) && (
                                   <div
                                     data-testid={`doc-expiry-mismatch-${doc.id}`}
                                     className="mt-1 inline-flex items-center rounded-sm bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-orange-800"
                                     title={`Document reads ${doc.extracted_expiry_date}`}
                                   >
-                                    Cert: {new Date(doc.extracted_expiry_date).toLocaleDateString()}
+                                    Cert:{" "}
+                                    {new Date(doc.extracted_expiry_date!).toLocaleDateString()}
                                   </div>
                                 )}
                             </td>
@@ -952,16 +953,15 @@ function DocumentsPage() {
                   onChange={(e) => setEditForm((p) => ({ ...p, expiry_date: e.target.value }))}
                   className="mt-2 rounded-sm"
                 />
-                {editingDoc.extracted_expiry_date &&
-                  editingDoc.extracted_expiry_date !== editForm.expiry_date && (
-                    <p
-                      className="mt-1.5 text-[11px] text-orange-700"
-                      data-testid="edit-expiry-mismatch"
-                    >
-                      Note: certificate reads{" "}
-                      {new Date(editingDoc.extracted_expiry_date).toLocaleDateString()}
-                    </p>
-                  )}
+                {isExpiryMismatch(editForm.expiry_date, editingDoc.extracted_expiry_date) && (
+                  <p
+                    className="mt-1.5 text-[11px] text-orange-700"
+                    data-testid="edit-expiry-mismatch"
+                  >
+                    Note: certificate reads{" "}
+                    {new Date(editingDoc.extracted_expiry_date!).toLocaleDateString()}
+                  </p>
+                )}
               </div>
               <div>
                 <Label className="text-xs font-semibold tracking-[0.1em] uppercase">
@@ -992,7 +992,7 @@ function DocumentsPage() {
                     Bargaining Council
                   </Label>
                   <Select
-                    value={editForm.bargaining_council}
+                    value={editForm.bargaining_council ?? ""}
                     onValueChange={(v) =>
                       setEditForm((p) => ({ ...p, bargaining_council: v as string }))
                     }

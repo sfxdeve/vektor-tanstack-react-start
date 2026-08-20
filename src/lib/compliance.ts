@@ -25,6 +25,23 @@ export const DOC_TYPE_LABEL: Record<string, string> = {
   DIRECTOR_ID: "Director ID Copy",
 };
 
+export const NEEDS_EXPIRY_TYPES = new Set<DocType>([
+  "BBBEE",
+  "COIDA",
+  "TAX_PIN",
+  "BARGAINING_COUNCIL_GOS",
+]);
+
+export function isBcGos(docType: string): boolean {
+  return docType === "BARGAINING_COUNCIL_GOS";
+}
+
+export type VaultDocMutation = {
+  expiry_date: string;
+  is_compliant: boolean;
+  bargaining_council: string | null;
+};
+
 const BBBEE_LEVEL_PATTERNS: RegExp[] = [
   /(?:B[-\s]?BBEE|BEE)\s*(?:status\s*)?level[:\s]*([1-8])\b/i,
   /level\s*(?:of\s*)?(?:contribut(?:ion|or))[:\s]*([1-8])\b/i,
@@ -57,7 +74,6 @@ const EXPIRY_LINE_RE = new RegExp(
 export function extractBbbeeLevelFromText(text: string): number | null {
   if (!text) return null;
   for (const pattern of BBBEE_LEVEL_PATTERNS) {
-    // need fresh regex each time because /g not used but ensure lastIndex reset
     const re = new RegExp(pattern.source, pattern.flags);
     const m = re.exec(text);
     if (m?.[1]) {
@@ -70,7 +86,6 @@ export function extractBbbeeLevelFromText(text: string): number | null {
 
 function parseDateCandidate(candidate: string): string | null {
   const c = candidate.trim();
-  // Try ISO  YYYY-MM-DD / YYYY/MM/DD
   const iso = /^(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})$/;
   const dmy = /^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{4})$/;
   const dMonthY = /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/;
@@ -86,7 +101,6 @@ function parseDateCandidate(candidate: string): string | null {
     month = Number(m[2]);
     day = Number(m[3]);
   } else if ((m = dmy.exec(c))) {
-    // SA dayfirst: DD/MM/YYYY
     day = Number(m[1]);
     month = Number(m[2]);
     year = Number(m[3]);
@@ -105,7 +119,6 @@ function parseDateCandidate(candidate: string): string | null {
   if (year == null || month == null || day == null) return null;
   if (month < 1 || month > 12) return null;
   if (day < 1 || day > 31) return null;
-  // Use UTC to avoid TZ shift
   const d = new Date(Date.UTC(year, month - 1, day));
   if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) {
     return null;
@@ -145,7 +158,6 @@ function monthNameToNumber(name: string): number | null {
 
 export function extractExpiryFromText(text: string): string | null {
   if (!text) return null;
-  // Reset global regex
   EXPIRY_LINE_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = EXPIRY_LINE_RE.exec(text)) !== null) {
@@ -157,22 +169,88 @@ export function extractExpiryFromText(text: string): string | null {
   return null;
 }
 
-export function extractBbbeeLevelFromBytes(bytes: Uint8Array): number | null {
+function decodeBytesToText(bytes: Uint8Array): string {
   try {
-    const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-    return extractBbbeeLevelFromText(text);
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   } catch {
-    return null;
+    return "";
   }
 }
 
+export function extractBbbeeLevelFromBytes(bytes: Uint8Array): number | null {
+  const text = decodeBytesToText(bytes);
+  return extractBbbeeLevelFromText(text);
+}
+
 export function extractExpiryFromBytes(bytes: Uint8Array): string | null {
+  const text = decodeBytesToText(bytes);
+  return extractExpiryFromText(text);
+}
+
+/**
+ * Workers-native PDF text extraction via pdfjs-dist with TextDecoder fallback.
+ * Tries pdfjs for real binary PDFs (compressed streams), falls back to raw
+ * text scan for text-based PDFs and for environments where pdfjs fails.
+ */
+export async function extractTextFromPdfBytes(bytes: Uint8Array): Promise<string> {
+  const raw = decodeBytesToText(bytes);
+  const header = raw.slice(0, 5);
+  if (!header.startsWith("%PDF")) return raw;
+
   try {
-    const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-    return extractExpiryFromText(text);
+    const pdfjs = (await import("pdfjs-dist")) as unknown as {
+      getDocument: (opts: unknown) => { promise: Promise<unknown> };
+      GlobalWorkerOptions: { workerSrc: string };
+    };
+    // Disable worker in Workers/Node — run on main thread
+    if (pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = "";
+    const loadingTask = pdfjs.getDocument({
+      data: bytes,
+      isEvalSupported: false,
+      useWorkerFetch: false,
+      verbosity: 0,
+    });
+    const doc = (await (
+      loadingTask as unknown as {
+        promise: Promise<{
+          numPages: number;
+          getPage: (
+            n: number,
+          ) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str?: string }> }> }>;
+        }>;
+      }
+    ).promise) as {
+      numPages: number;
+      getPage: (
+        n: number,
+      ) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str?: string }> }> }>;
+    };
+    const pages = Math.min(doc.numPages, 5);
+    let out = "";
+    for (let i = 1; i <= pages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      for (const item of content.items) {
+        if (item.str) out += item.str + " ";
+      }
+      out += "\n";
+    }
+    // If pdfjs produced meaningful text, prefer it; else fall back
+    if (out.trim().length > 10) return out;
+    return raw;
   } catch {
-    return null;
+    return raw;
   }
+}
+
+export async function extractBbbeeLevelFromPdfBytes(bytes: Uint8Array): Promise<number | null> {
+  const text = await extractTextFromPdfBytes(bytes);
+  return extractBbbeeLevelFromText(text);
+}
+
+export async function extractExpiryFromPdfBytes(bytes: Uint8Array): Promise<string | null> {
+  const text = await extractTextFromPdfBytes(bytes);
+  return extractExpiryFromText(text);
 }
 
 /**
@@ -183,7 +261,7 @@ export function validateBargainingCouncil(
   docType: string,
   bargainingCouncil: string | null | undefined,
 ): string | null {
-  if (docType === "BARGAINING_COUNCIL_GOS") {
+  if (isBcGos(docType)) {
     if (!bargainingCouncil || String(bargainingCouncil).trim() === "") {
       throw new Error("bargaining_council code is required for Bargaining Council letters");
     }
@@ -193,19 +271,31 @@ export function validateBargainingCouncil(
     }
     return code;
   }
-  // For non-BC doc types, ignore any council value silently (legacy compat)
   return null;
 }
 
 /**
- * Bargaining council coverage: legacy untagged compliant docs cover any council.
- * Ported verbatim from backend/routes/tender_routes.py.
+ * Bargaining council coverage: legacy untagged compliant docs cover any council
+ * when they are also not expired. Expired documents never cover, even if untagged.
  */
 export function isBargainingCouncilCovered(
   applicableCodes: string[],
-  docs: Array<{ bargainingCouncil: string | null; isCompliant: boolean }>,
+  docs: Array<{
+    bargainingCouncil: string | null;
+    isCompliant: boolean;
+    expiryDate?: string | Date | null;
+  }>,
+  now: Date = new Date(),
 ): boolean {
-  const bcDocs = docs.filter((d) => d.isCompliant);
+  const nowMs = now.getTime();
+  const isExpired = (d: { expiryDate?: string | Date | null }): boolean => {
+    if (!d.expiryDate) return false;
+    const t =
+      d.expiryDate instanceof Date ? d.expiryDate.getTime() : new Date(d.expiryDate).getTime();
+    return Number.isNaN(t) ? false : t < nowMs;
+  };
+
+  const bcDocs = docs.filter((d) => d.isCompliant && !isExpired(d));
   if (bcDocs.length === 0) return false;
   const tagged = new Set(
     bcDocs.filter((d) => d.bargainingCouncil).map((d) => d.bargainingCouncil as string),
@@ -219,17 +309,21 @@ export function isBargainingCouncilCovered(
   return false;
 }
 
-/**
- * Check if Typed expiry mismatches extracted expiry.
- */
 export function isExpiryMismatch(
   typedExpiry: string | null | undefined,
   extractedExpiry: string | null | undefined,
 ): boolean {
   if (!typedExpiry || !extractedExpiry) return false;
-  // Normalize to YYYY-MM-DD
   const norm = (s: string) => s.slice(0, 10);
   return norm(typedExpiry) !== norm(extractedExpiry);
+}
+
+export function isBbbeeMismatch(
+  profileLevel: number | null | undefined,
+  certLevel: number | null | undefined,
+): boolean {
+  if (profileLevel == null || certLevel == null) return false;
+  return Number(profileLevel) !== Number(certLevel);
 }
 
 export const REMINDER_THRESHOLDS = [30, 7, 0] as const;

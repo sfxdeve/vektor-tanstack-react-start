@@ -29,6 +29,7 @@ import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/docum
 import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
 import { Route as ApiVerifyStatutoryRouteImport } from './routes/api/verify/statutory'
+import { Route as ApiDocumentsCompanyCompanyIdRouteImport } from './routes/api/documents/company/$companyId'
 import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/documents/download/$docId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -133,6 +134,12 @@ const ApiVerifyStatutoryRoute = ApiVerifyStatutoryRouteImport.update({
   path: '/api/verify/statutory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDocumentsCompanyCompanyIdRoute =
+  ApiDocumentsCompanyCompanyIdRouteImport.update({
+    id: '/api/documents/company/$companyId',
+    path: '/api/documents/company/$companyId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiDocumentsDownloadDocIdRoute =
   ApiDocumentsDownloadDocIdRouteImport.update({
     id: '/api/documents/download/$docId',
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRoutesByTo {
@@ -184,6 +192,7 @@ export interface FileRoutesByTo {
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies': typeof ApiCompaniesIndexRoute
+  '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRoutesById {
@@ -208,6 +217,7 @@ export interface FileRoutesById {
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
   '/api/verify/statutory': typeof ApiVerifyStatutoryRoute
   '/api/companies/': typeof ApiCompaniesIndexRoute
+  '/api/documents/company/$companyId': typeof ApiDocumentsCompanyCompanyIdRoute
   '/api/documents/download/$docId': typeof ApiDocumentsDownloadDocIdRoute
 }
 export interface FileRouteTypes {
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies'
+    | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
   id:
     | '__root__'
@@ -279,6 +291,7 @@ export interface FileRouteTypes {
     | '/api/reference/bargaining-councils'
     | '/api/verify/statutory'
     | '/api/companies/'
+    | '/api/documents/company/$companyId'
     | '/api/documents/download/$docId'
   fileRoutesById: FileRoutesById
 }
@@ -303,6 +316,7 @@ export interface RootRouteChildren {
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
   ApiVerifyStatutoryRoute: typeof ApiVerifyStatutoryRoute
   ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
+  ApiDocumentsCompanyCompanyIdRoute: typeof ApiDocumentsCompanyCompanyIdRoute
   ApiDocumentsDownloadDocIdRoute: typeof ApiDocumentsDownloadDocIdRoute
 }
 
@@ -448,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVerifyStatutoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/documents/company/$companyId': {
+      id: '/api/documents/company/$companyId'
+      path: '/api/documents/company/$companyId'
+      fullPath: '/api/documents/company/$companyId'
+      preLoaderRoute: typeof ApiDocumentsCompanyCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/documents/download/$docId': {
       id: '/api/documents/download/$docId'
       path: '/api/documents/download/$docId'
@@ -479,6 +500,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
   ApiVerifyStatutoryRoute: ApiVerifyStatutoryRoute,
   ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
+  ApiDocumentsCompanyCompanyIdRoute: ApiDocumentsCompanyCompanyIdRoute,
   ApiDocumentsDownloadDocIdRoute: ApiDocumentsDownloadDocIdRoute,
 }
 export const routeTree = rootRouteImport

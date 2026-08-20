@@ -9,19 +9,13 @@ const eq: (a: unknown, b: unknown) => unknown = drizzleEq as unknown as (
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { complianceDocuments } from "@/db/schema/compliance";
-
-async function getSession(request: Request) {
-  const { createAuth } = await import("@/lib/auth/auth");
-  const auth = createAuth(env.DB as unknown as D1Database);
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session;
-}
+import { getSessionFromRequest } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/documents/download/$docId")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
@@ -90,7 +84,6 @@ export const Route = createFileRoute("/api/documents/download/$docId")({
         headers.set("content-disposition", `attachment; filename="${doc.fileName}"`);
         if (obj.size) headers.set("content-length", String(obj.size));
 
-        // R2ObjectBody has .body as ReadableStream and .arrayBuffer()
         const body = (obj as unknown as { body: ReadableStream }).body ?? (await obj.arrayBuffer());
         return new Response(body as BodyInit, { headers });
       },

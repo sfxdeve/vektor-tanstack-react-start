@@ -1,20 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env } from "cloudflare:workers";
 
-import { extractBbbeeLevelFromBytes, extractExpiryFromBytes } from "@/lib/compliance";
-
-async function getSession(request: Request) {
-  const { createAuth } = await import("@/lib/auth/auth");
-  const auth = createAuth(env.DB as unknown as D1Database);
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session;
-}
+import {
+  type DocType,
+  NEEDS_EXPIRY_TYPES,
+  extractBbbeeLevelFromPdfBytes,
+  extractExpiryFromPdfBytes,
+} from "@/lib/compliance";
+import { getSessionFromRequest } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/documents/preview-bbbee")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
@@ -62,11 +60,11 @@ export const Route = createFileRoute("/api/documents/preview-bbbee")({
         let expiry: string | null = null;
         let level: number | null = null;
 
-        if (["BBBEE", "COIDA", "TAX_PIN", "BARGAINING_COUNCIL_GOS"].includes(docType)) {
-          expiry = extractExpiryFromBytes(bytes);
+        if (NEEDS_EXPIRY_TYPES.has(docType as DocType)) {
+          expiry = await extractExpiryFromPdfBytes(bytes);
         }
         if (docType === "BBBEE") {
-          level = extractBbbeeLevelFromBytes(bytes);
+          level = await extractBbbeeLevelFromPdfBytes(bytes);
         }
 
         return new Response(

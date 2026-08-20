@@ -11,40 +11,16 @@ import { companies } from "@/db/schema/company";
 import { complianceDocuments, sentReminders } from "@/db/schema/compliance";
 import {
   DOC_TYPES,
-  extractBbbeeLevelFromBytes,
-  extractExpiryFromBytes,
+  type DocType,
+  NEEDS_EXPIRY_TYPES,
   VALID_DOC_TYPES,
+  extractBbbeeLevelFromPdfBytes,
+  extractExpiryFromPdfBytes,
+  isBcGos,
   validateBargainingCouncil,
 } from "@/lib/compliance";
-
-async function getSession(request: Request) {
-  const { createAuth } = await import("@/lib/auth/auth");
-  const auth = createAuth(env.DB as unknown as D1Database);
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session;
-}
-
-function toApiDoc(row: typeof complianceDocuments.$inferSelect) {
-  const expiry = row.expiryDate ? new Date(row.expiryDate).toISOString().slice(0, 10) : null;
-  const extractedExpiry = row.extractedExpiryDate
-    ? new Date(row.extractedExpiryDate).toISOString().slice(0, 10)
-    : null;
-  return {
-    id: row.id,
-    company_id: row.companyId,
-    doc_type: row.docType,
-    file_name: row.fileName,
-    expiry_date: expiry,
-    is_compliant: Boolean(row.isCompliant),
-    storage_path: row.storageKey,
-    storage_key: row.storageKey,
-    bargaining_council: row.bargainingCouncil ?? null,
-    extracted_bbbee_level: row.extractedBbbeeLevel ?? null,
-    extracted_expiry_date: extractedExpiry,
-    created_at: new Date(row.createdAt).toISOString(),
-    updated_at: new Date(row.updatedAt).toISOString(),
-  };
-}
+import { toApiDoc } from "@/lib/document-api";
+import { getSessionFromRequest } from "@/lib/server-auth";
 
 function parseIsCompliant(raw: FormDataEntryValue | null): boolean {
   if (raw == null) return true;
@@ -58,7 +34,7 @@ export const Route = createFileRoute("/api/documents/upload")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const session = await getSession(request);
+        const session = await getSessionFromRequest(request);
         if (!session?.user) {
           return new Response(JSON.stringify({ detail: "Not authenticated" }), {
             status: 401,
@@ -142,7 +118,6 @@ export const Route = createFileRoute("/api/documents/upload")({
 
         const db = createDb(env.DB as unknown as D1Database);
 
-        // Ownership check
         const companyRows = await (
           db.select().from(companies).where as unknown as (
             c: unknown,
@@ -163,7 +138,6 @@ export const Route = createFileRoute("/api/documents/upload")({
           });
         }
 
-        // Read file bytes
         let bytes: Uint8Array;
         try {
           const buf = await file.arrayBuffer();
@@ -181,11 +155,11 @@ export const Route = createFileRoute("/api/documents/upload")({
 
         let extractedLevel: number | null = null;
         let extractedExpiryIso: string | null = null;
-        if (isPdf && ["BBBEE", "COIDA", "TAX_PIN", "BARGAINING_COUNCIL_GOS"].includes(docType)) {
-          extractedExpiryIso = extractExpiryFromBytes(bytes);
+        if (isPdf && NEEDS_EXPIRY_TYPES.has(docType as DocType)) {
+          extractedExpiryIso = await extractExpiryFromPdfBytes(bytes);
         }
         if (isPdf && docType === "BBBEE") {
-          extractedLevel = extractBbbeeLevelFromBytes(bytes);
+          extractedLevel = await extractBbbeeLevelFromPdfBytes(bytes);
         }
         let extractedExpiryDate: Date | null = null;
         if (extractedExpiryIso) {
@@ -193,7 +167,6 @@ export const Route = createFileRoute("/api/documents/upload")({
           if (!Number.isNaN(d.getTime())) extractedExpiryDate = d;
         }
 
-        // Storage put
         const docId = crypto.randomUUID();
         const storageKey = `compliance/${companyId}/${docId}`;
         const storage = (env as unknown as { STORAGE?: R2Bucket }).STORAGE;
@@ -210,13 +183,10 @@ export const Route = createFileRoute("/api/documents/upload")({
             });
           }
         } else {
-          // In unit tests without R2, skip storage
           console.warn("STORAGE binding not available, skipping R2 put");
         }
 
         // Purge superseded docs of same type (and same council for BC)
-        // Must remove R2 objects and sent_reminders rows.
-        // Fetch all for company and filter in JS to avoid drizzle `and` typing complexity.
         let toPurge: (typeof complianceDocuments.$inferSelect)[] = [];
         try {
           const all = await (
@@ -226,7 +196,7 @@ export const Route = createFileRoute("/api/documents/upload")({
           )(eq(complianceDocuments.companyId, companyId));
           toPurge = all.filter((r) => {
             if (r.docType !== docType) return false;
-            if (docType === "BARGAINING_COUNCIL_GOS") return r.bargainingCouncil === bcCode;
+            if (isBcGos(docType)) return r.bargainingCouncil === bcCode;
             return true;
           });
         } catch {
@@ -241,7 +211,6 @@ export const Route = createFileRoute("/api/documents/upload")({
               console.warn("R2 delete failed for superseded", old.storageKey, e);
             }
           }
-          // Clear sent_reminders for this document
           try {
             await (db.delete(sentReminders).where as unknown as (c: unknown) => Promise<unknown>)(
               eq(sentReminders.documentId, old.id),
@@ -253,7 +222,6 @@ export const Route = createFileRoute("/api/documents/upload")({
         if (toPurge.length > 0) {
           try {
             const ids = toPurge.map((d) => d.id);
-            // Drizzle delete where id in list — use loop for simplicity
             for (const pid of ids) {
               await (
                 db.delete(complianceDocuments).where as unknown as (c: unknown) => Promise<unknown>

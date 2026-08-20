@@ -157,6 +157,29 @@ describe("compliance — bargaining council coverage (legacy untagged handling)"
     ).toBe(true);
   });
 
+  it("expired untagged compliant does NOT cover (expiry-aware)", () => {
+    const past = new Date(Date.now() - 86400000).toISOString();
+    const future = new Date(Date.now() + 86400000 * 30).toISOString();
+    expect(
+      isBargainingCouncilCovered(
+        ["BCCEI"],
+        [{ bargainingCouncil: null, isCompliant: true, expiryDate: past }],
+      ),
+    ).toBe(false);
+    expect(
+      isBargainingCouncilCovered(
+        ["BCCEI"],
+        [{ bargainingCouncil: null, isCompliant: true, expiryDate: future }],
+      ),
+    ).toBe(true);
+    expect(
+      isBargainingCouncilCovered(
+        ["BCCEI"],
+        [{ bargainingCouncil: "BCCEI", isCompliant: true, expiryDate: past }],
+      ),
+    ).toBe(false);
+  });
+
   it("no docs means not covered", () => {
     expect(isBargainingCouncilCovered(["BCCEI"], [])).toBe(false);
   });
