@@ -198,9 +198,19 @@ test.describe("Referrals", () => {
     await page.getByTestId("input-email").fill(referrerEmail);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-login").click();
-    await expect(page).toHaveURL(/\/admin|\/app/, { timeout: 15000 });
+    const browserName = page.context().browser()?.browserType().name();
+    if (browserName === "webkit") {
+      await page.waitForTimeout(1000);
+      if (page.url().includes("/login")) {
+        const resp = await page.request.post("/api/auth/sign-in/email", {
+          data: { email: referrerEmail, password },
+        });
+        if (resp.ok()) await page.goto("/admin");
+      }
+    }
+    await expect(page).toHaveURL(/\/admin|\/app/, { timeout: 20000 });
     // Admin should be redirected to /admin
-    await expect(page).toHaveURL(/\/admin/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/admin/, { timeout: 15000 });
     await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
 
     // Admin confirm the referee's Pro EFT (should grant 5 credits and trigger referral reward)

@@ -130,7 +130,9 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     expect(ourEmails1.length).toBe(1);
     const email1 = ourEmails1[0]!;
     expect((email1.subject as string) || (email1.html as string)).toBeDefined();
-    const subjectOrHtml = `${String(email1.subject ?? "")} ${String(email1.html ?? "")}`;
+    const subjectText = (email1.subject as string | undefined) ?? "";
+    const htmlText = (email1.html as string | undefined) ?? "";
+    const subjectOrHtml = `${subjectText} ${htmlText}`;
     expect(subjectOrHtml).toContain("7");
     expect((email1.html as string) ?? "").toContain("#D97706");
     expect((email1.html as string) ?? "").toContain("URGENT");
@@ -159,9 +161,10 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     // Verify deleting document clears sent_reminders and allows new sweep to not find doc
     // Delete the document via UI or API
     const docId = (await page.evaluate(async () => {
-      const r = await fetch(
-        `/api/documents/company/${((await (await fetch("/api/companies")).json()) as Array<Record<string, unknown>>)[0]?.id}`,
-      );
+      const rawComps = await (await fetch("/api/companies")).json().catch(() => []);
+      const companies = rawComps as Array<Record<string, unknown>>;
+      const cid = (companies[0]?.id as string | undefined) ?? "";
+      const r = await fetch(`/api/documents/company/${cid}`);
       const j = (await r.json().catch(() => [])) as Array<Record<string, unknown>>;
       const docs = Array.isArray(j) ? j : [];
       return (docs[0]?.id as string | null) ?? null;
@@ -271,8 +274,15 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState("networkidle").catch(() => {});
+    // WebKit: signup triggers double navigation; avoid interrupting in-flight redirect
+    if (!page.url().includes("/setup")) {
+      await page.goto("/setup", { waitUntil: "commit" }).catch(() => {});
+      await page.waitForLoadState("networkidle").catch(() => {});
+    } else {
+      await page.waitForTimeout(300);
+    }
+    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 15000 });
     await page.getByTestId("input-company-name").fill("A11y Rem Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();

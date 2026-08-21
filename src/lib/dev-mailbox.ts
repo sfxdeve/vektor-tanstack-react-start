@@ -25,8 +25,10 @@ export interface CapturedEmail {
 
 const GLOBAL_KEY = "__VEKTOR_DEV_MAILBOX__" as const;
 
+type MailboxGlobal = typeof globalThis & Record<typeof GLOBAL_KEY, CapturedEmail[] | undefined>;
+
 function getStore(): CapturedEmail[] {
-  const g = globalThis as unknown as Record<string, CapturedEmail[] | undefined>;
+  const g = globalThis as MailboxGlobal;
   if (!g[GLOBAL_KEY]) g[GLOBAL_KEY] = [];
   return g[GLOBAL_KEY]!;
 }
@@ -44,7 +46,16 @@ export function clearEmails(): void {
   store.length = 0;
 }
 
+/**
+ * Capture a raw payload posted to /api/dev/mailbox — normalizes loose
+ * shapes (to/subject/html/type) into a CapturedEmail. Kept as
+ * `addRawCapture` for backward compat; prefer `captureRawEmail` for new code.
+ */
 export function addRawCapture(raw: unknown): CapturedEmail {
+  return captureRawEmail(raw);
+}
+
+export function captureRawEmail(raw: unknown): CapturedEmail {
   const id = `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
   // Try to normalize common shapes

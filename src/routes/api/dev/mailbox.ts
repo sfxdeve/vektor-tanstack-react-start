@@ -1,29 +1,13 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
-import { env as cfEnv } from "cloudflare:workers";
 
 import { clearEmails, listEmails } from "@/lib/dev-mailbox";
+import { getMailboxEnv } from "@/lib/reminder-env";
 
-function getEnv(): Record<string, string | undefined> {
-  const cf = (cfEnv as unknown as Record<string, string | undefined>) ?? {};
-  const merged: Record<string, string | undefined> = { ...cf };
-  if (typeof process !== "undefined" && process.env) {
-    for (const k of ["DEV_MAILBOX", "DEV_AI_STUB", "APP_URL", "RESEND_API_KEY"]) {
-      if (!merged[k] && process.env[k]) merged[k] = process.env[k];
-    }
-  }
-  return merged;
-}
-
-function isAllowed(request: Request): boolean {
-  const env = getEnv();
-  const devFlag =
-    env.DEV_MAILBOX ?? env.DEV_AI_STUB ?? process.env.DEV_MAILBOX ?? process.env.DEV_AI_STUB;
-  if (devFlag === "1") return true;
-  const url = new URL(request.url);
-  const isLocalhost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
-  if (isLocalhost) return true;
-  return false;
+function isAllowed(_request?: Request): boolean {
+  const env = getMailboxEnv();
+  // Spec requires DEV_MAILBOX=1 for capture; strict — no DEV_AI_STUB or localhost fallback.
+  // Keeps dev mailbox from leaking in preview where only DEV_AI_STUB might be set.
+  return env.DEV_MAILBOX === "1" || process.env.DEV_MAILBOX === "1";
 }
 
 export const Route = createFileRoute("/api/dev/mailbox")({
@@ -42,7 +26,7 @@ export const Route = createFileRoute("/api/dev/mailbox")({
         });
       },
       POST: async ({ request }) => {
-        if (!isAllowed(request)) {
+        if (!isAllowed()) {
           return new Response(JSON.stringify({ detail: "Not available" }), {
             status: 404,
             headers: { "content-type": "application/json" },
@@ -71,19 +55,14 @@ export const Route = createFileRoute("/api/dev/mailbox")({
 
         // Normalize and capture
         const obj = (body ?? {}) as Record<string, unknown>;
-        // If body already looks like a captured email (has to/subject/html), store directly
-        // Otherwise wrap as raw capture
         if (obj.to || obj.subject || obj.html || obj.type) {
-          // Capture with helper that normalizes
           const { addRawCapture } = await import("@/lib/dev-mailbox");
           const entry = addRawCapture(obj);
-          // Also try to ensure raw capture for reminder shape
           return new Response(JSON.stringify({ ok: true, id: entry.id, captured: entry }), {
             headers: { "content-type": "application/json" },
           });
         }
 
-        // Generic capture
         const { addRawCapture } = await import("@/lib/dev-mailbox");
         const entry = addRawCapture(obj);
         return new Response(JSON.stringify({ ok: true, id: entry.id }), {

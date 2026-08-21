@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { env as cfEnv } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
@@ -6,29 +5,9 @@ import { eq } from "drizzle-orm";
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { complianceDocuments } from "@/db/schema/compliance";
+import { getReminderEnv } from "@/lib/reminder-env";
+import { daysUntil, pickThreshold, sendDocumentReminder } from "@/lib/reminder";
 import { getSessionFromRequest } from "@/lib/server-auth";
-import { daysUntil, sendDocumentReminder } from "@/lib/reminder";
-
-function getEnv(): Record<string, string | undefined> {
-  const cf = (cfEnv as unknown as Record<string, string | undefined>) ?? {};
-  const merged: Record<string, string | undefined> = { ...cf };
-  if (typeof process !== "undefined" && process.env) {
-    for (const k of [
-      "DEV_MAILBOX",
-      "DEV_AI_STUB",
-      "APP_URL",
-      "FRONTEND_URL",
-      "RESEND_API_KEY",
-      "SENDER_EMAIL",
-      "SENDER_NAME",
-      "EMAIL_FROM",
-      "SUPPORT_EMAIL",
-    ]) {
-      if (!merged[k] && process.env[k]) merged[k] = process.env[k];
-    }
-  }
-  return merged;
-}
 
 export const Route = createFileRoute("/api/reminders/test/$companyId")({
   server: {
@@ -121,12 +100,9 @@ export const Route = createFileRoute("/api/reminders/test/$companyId")({
             ? doc.expiryDate.toISOString().slice(0, 10)
             : String(doc.expiryDate ?? "");
         const days = daysUntil(expiryStr);
-        let threshold = 30;
-        if (days === null || days <= 0) threshold = 0;
-        else if (days <= 7) threshold = 7;
-        else threshold = 30;
+        const threshold = pickThreshold(days) ?? 30;
 
-        const env = getEnv();
+        const env = getReminderEnv();
 
         const result = await sendDocumentReminder(
           db,
