@@ -1,10 +1,12 @@
 // oxlint-disable react/set-state-in-effect, jsx-a11y/control-has-associated-label
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
+import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { authClient } from "@/lib/auth/auth-client";
+import { getUserRole } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/companies")({
   component: AdminCompaniesPage,
@@ -50,8 +52,7 @@ type CompanyDetail = {
 };
 
 function AdminCompaniesPage() {
-  const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useAdminGuard();
   const [companies, setCompanies] = useState<CompanyRow[] | null>(null);
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -60,20 +61,6 @@ function AdminCompaniesPage() {
   const [selectedDetail, setSelectedDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role !== "admin" || impersonatedBy) {
-      void navigate({ to: "/app" });
-    }
-  }, [session, isPending, navigate]);
 
   const fetchCompanies = useCallback(async (q?: string) => {
     setRefreshing(true);
@@ -94,7 +81,7 @@ function AdminCompaniesPage() {
     if (
       !isPending &&
       session?.user &&
-      (session.user as unknown as { role?: string }).role === "admin"
+      getUserRole(session as never) === "admin"
     ) {
       void fetchCompanies();
     }
@@ -313,11 +300,7 @@ function AdminCompaniesPage() {
                           >
                             Delete
                           </button>
-                          <span
-                            data-testid={`admin-company-delete-${r.id}`}
-                            className="hidden"
-                            aria-hidden
-                          />
+
                         </div>
                       </td>
                     </tr>

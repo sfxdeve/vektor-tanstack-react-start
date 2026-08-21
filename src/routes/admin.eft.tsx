@@ -1,10 +1,11 @@
 // oxlint-disable react/set-state-in-effect, jsx-a11y/control-has-associated-label
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
-import { authClient } from "@/lib/auth/auth-client";
+import { useAdminGuard } from "@/hooks/use-admin-guard";
+import { getUserRole, toneClass } from "@/lib/admin";
 
 export const Route = createFileRoute("/admin/eft")({
   component: AdminEftPage,
@@ -52,24 +53,10 @@ const FILTERS = [
   { key: "all", label: "All", testId: "filter-all" },
 ];
 
-function toneClass(tone: string): string {
-  switch (tone) {
-    case "green":
-      return "border-green-500/30 bg-green-500/10 text-green-300";
-    case "red":
-      return "border-red-500/30 bg-red-500/10 text-red-300";
-    case "amber":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-    case "teal":
-      return "border-teal-500/30 bg-teal-500/10 text-teal-300";
-    default:
-      return "border-zinc-700 bg-zinc-800 text-zinc-300";
-  }
-}
+
 
 function AdminEftPage() {
-  const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useAdminGuard();
   const [payments, setPayments] = useState<EftPayment[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string>("pending_review");
@@ -80,19 +67,6 @@ function AdminEftPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [actionInFlight, setActionInFlight] = useState(false);
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role !== "admin" || impersonatedBy) {
-      void navigate({ to: "/app" });
-    }
-  }, [session, isPending, navigate]);
 
   const load = useCallback(async (f: string) => {
     setLoading(true);
@@ -113,7 +87,7 @@ function AdminEftPage() {
     if (
       !isPending &&
       session?.user &&
-      (session.user as unknown as { role?: string }).role === "admin"
+      getUserRole(session as never) === "admin"
     ) {
       void load(filter);
     }
@@ -341,7 +315,7 @@ function AdminEftPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${toneClass(meta.tone)}`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${toneClass(meta.tone as never)}`}
                           >
                             {meta.label}
                           </span>

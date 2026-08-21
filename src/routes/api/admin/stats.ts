@@ -8,26 +8,14 @@ import { companies } from "@/db/schema/company";
 import { eftPayments } from "@/db/schema/eft";
 import { user } from "@/db/schema/auth";
 import { tenders } from "@/db/schema/tender";
-import { getSessionFromRequest } from "@/lib/server-auth";
+import { requireAdmin } from "@/lib/admin-server";
 
 export const Route = createFileRoute("/api/admin/stats")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await getSessionFromRequest(request);
-        if (!session?.user) {
-          return new Response(JSON.stringify({ detail: "Not authenticated" }), {
-            status: 401,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
-        if (!isAdmin) {
-          return new Response(JSON.stringify({ detail: "Admin access required" }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const adminCheck = await requireAdmin(request);
+        if (adminCheck instanceof Response) return adminCheck;
         const db = createDb(env.DB as unknown as D1Database);
 
         const usersRows = await db.select().from(user);

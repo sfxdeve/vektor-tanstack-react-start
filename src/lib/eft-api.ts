@@ -38,6 +38,8 @@ export function toApiEftPayment(payment: EftRow) {
     confirmed_at: payment.confirmedAt ? new Date(payment.confirmedAt).toISOString() : null,
     rejected_at: payment.rejectedAt ? new Date(payment.rejectedAt).toISOString() : null,
     credits_granted: payment.creditsGranted,
+    confirmed_by: (payment as unknown as { confirmedBy?: string }).confirmedBy ?? null,
+    rejected_by: (payment as unknown as { rejectedBy?: string }).rejectedBy ?? null,
   };
 }
 

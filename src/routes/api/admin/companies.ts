@@ -8,26 +8,14 @@ import { companies } from "@/db/schema/company";
 import { complianceDocuments } from "@/db/schema/compliance";
 import { companyCredits } from "@/db/schema/credits";
 import { tenders } from "@/db/schema/tender";
-import { getSessionFromRequest } from "@/lib/server-auth";
+import { requireAdmin } from "@/lib/admin-server";
 
 export const Route = createFileRoute("/api/admin/companies")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await getSessionFromRequest(request);
-        if (!session?.user) {
-          return new Response(JSON.stringify({ detail: "Not authenticated" }), {
-            status: 401,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
-        if (!isAdmin) {
-          return new Response(JSON.stringify({ detail: "Admin access required" }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const adminCheck = await requireAdmin(request);
+        if (adminCheck instanceof Response) return adminCheck;
         const url = new URL(request.url);
         const q = (url.searchParams.get("q") || url.searchParams.get("search") || "")
           .trim()

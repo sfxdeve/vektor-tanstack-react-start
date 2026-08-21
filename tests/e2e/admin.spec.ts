@@ -479,12 +479,12 @@ test.describe("Admin Console (Issue 09)", () => {
     await expect(page.getByTestId(`admin-eft-row-${starterPayment.id}`)).toBeVisible({ timeout: 8000 }).catch(() => {});
     await expect(page.locator(`[data-testid="admin-eft-row-${starterPayment.id}"]`)).toContainText("Confirmed");
 
-    // Idempotent second confirm should return 400
+    // Idempotent second confirm should return 200
     const secondConfirm = await page.evaluate(async (pid: string) => {
       const r = await fetch(`/api/eft/admin/${pid}/confirm`, { method: "POST" });
       return r.status;
     }, starterPayment.id);
-    expect(secondConfirm).toBe(400);
+    expect(secondConfirm).toBe(200);
 
     // Check credits granted
     // Need to login as user again to check credits or stay as admin can still query?

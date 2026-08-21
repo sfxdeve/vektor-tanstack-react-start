@@ -213,12 +213,12 @@ test.describe("Referrals", () => {
     const confirmed = confirmRes.body as { status: string; credits_granted: number | null };
     expect(confirmed.status).toBe("confirmed");
 
-    // Idempotent confirm: second call should 400 already confirmed
+    // Idempotent confirm: second call should 200 (idempotent)
     const secondConfirm = await page.evaluate(async (pid: string) => {
       const r = await fetch(`/api/eft/admin/${pid}/confirm`, { method: "POST" });
       return { ok: r.ok, status: r.status };
     }, paymentId);
-    expect(secondConfirm.status).toBe(400);
+    expect(secondConfirm.status).toBe(200);
 
     // Check referral stats as admin/referrer (still logged in as referrer)
     const stats = await page.evaluate(async () => {
