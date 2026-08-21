@@ -297,6 +297,7 @@ test.describe("Referrals", () => {
     // setup auto-redirects to /app ~1.2s after save; wait it out so
     // follow-up navigations never race the router
     await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState("networkidle");
     await page.goto("/billing");
     await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("billing-title")).toBeVisible({ timeout: 10000 });
