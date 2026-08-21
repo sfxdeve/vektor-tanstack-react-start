@@ -35,6 +35,7 @@ import { Route as ApiBillingPackagesRouteImport } from './routes/api/billing/pac
 import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
 import { Route as ApiCompaniesCompanyIdRouteImport } from './routes/api/companies/$companyId'
 import { Route as ApiDashboardActivityRouteImport } from './routes/api/dashboard/activity'
+import { Route as ApiDevMailboxRouteImport } from './routes/api/dev/mailbox'
 import { Route as ApiDevSetRoleRouteImport } from './routes/api/dev/set-role'
 import { Route as ApiDocumentsIdRouteImport } from './routes/api/documents/$id'
 import { Route as ApiDocumentsPreviewBbbeeRouteImport } from './routes/api/documents/preview-bbbee'
@@ -46,6 +47,7 @@ import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api
 import { Route as ApiReferralsClaimRouteImport } from './routes/api/referrals/claim'
 import { Route as ApiReferralsLookupRouteImport } from './routes/api/referrals/lookup'
 import { Route as ApiReferralsMyRouteImport } from './routes/api/referrals/my'
+import { Route as ApiRemindersSweepRouteImport } from './routes/api/reminders/sweep'
 import { Route as ApiTenderTenderIdRouteImport } from './routes/api/tender/$tenderId'
 import { Route as ApiTendersCompanyIdRouteImport } from './routes/api/tenders/$companyId'
 import { Route as ApiTendersAnalyzeRouteImport } from './routes/api/tenders/analyze'
@@ -59,6 +61,7 @@ import { Route as ApiDocumentsDownloadDocIdRouteImport } from './routes/api/docu
 import { Route as ApiEftAdminAllRouteImport } from './routes/api/eft/admin/all'
 import { Route as ApiEftRequestPaymentIdRouteImport } from './routes/api/eft/request/$paymentId'
 import { Route as ApiEftUploadProofPaymentIdRouteImport } from './routes/api/eft/upload-proof/$paymentId'
+import { Route as ApiRemindersTestCompanyIdRouteImport } from './routes/api/reminders/test.$companyId'
 import { Route as ApiTenderTenderIdSbd4RouteImport } from './routes/api/tender/$tenderId/sbd4'
 import { Route as ApiTenderTenderIdSbd61RouteImport } from './routes/api/tender/$tenderId/sbd61'
 import { Route as ApiEftAdminPaymentIdConfirmRouteImport } from './routes/api/eft/admin/$paymentId/confirm'
@@ -196,6 +199,11 @@ const ApiDashboardActivityRoute = ApiDashboardActivityRouteImport.update({
   path: '/api/dashboard/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDevMailboxRoute = ApiDevMailboxRouteImport.update({
+  id: '/api/dev/mailbox',
+  path: '/api/dev/mailbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDevSetRoleRoute = ApiDevSetRoleRouteImport.update({
   id: '/api/dev/set-role',
   path: '/api/dev/set-role',
@@ -251,6 +259,11 @@ const ApiReferralsLookupRoute = ApiReferralsLookupRouteImport.update({
 const ApiReferralsMyRoute = ApiReferralsMyRouteImport.update({
   id: '/api/referrals/my',
   path: '/api/referrals/my',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRemindersSweepRoute = ApiRemindersSweepRouteImport.update({
+  id: '/api/reminders/sweep',
+  path: '/api/reminders/sweep',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTenderTenderIdRoute = ApiTenderTenderIdRouteImport.update({
@@ -324,6 +337,12 @@ const ApiEftUploadProofPaymentIdRoute =
     path: '/api/eft/upload-proof/$paymentId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiRemindersTestCompanyIdRoute =
+  ApiRemindersTestCompanyIdRouteImport.update({
+    id: '/api/reminders/test/$companyId',
+    path: '/api/reminders/test/$companyId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiTenderTenderIdSbd4Route = ApiTenderTenderIdSbd4RouteImport.update({
   id: '/sbd4',
   path: '/sbd4',
@@ -385,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/mailbox': typeof ApiDevMailboxRoute
   '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
@@ -396,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
+  '/api/reminders/sweep': typeof ApiRemindersSweepRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -410,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/api/eft/admin/all': typeof ApiEftAdminAllRoute
   '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
   '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
+  '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
@@ -443,6 +465,7 @@ export interface FileRoutesByTo {
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/mailbox': typeof ApiDevMailboxRoute
   '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
@@ -454,6 +477,7 @@ export interface FileRoutesByTo {
   '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
+  '/api/reminders/sweep': typeof ApiRemindersSweepRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -468,6 +492,7 @@ export interface FileRoutesByTo {
   '/api/eft/admin/all': typeof ApiEftAdminAllRoute
   '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
   '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
+  '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
@@ -502,6 +527,7 @@ export interface FileRoutesById {
   '/api/billing/packages': typeof ApiBillingPackagesRoute
   '/api/companies/$companyId': typeof ApiCompaniesCompanyIdRoute
   '/api/dashboard/activity': typeof ApiDashboardActivityRoute
+  '/api/dev/mailbox': typeof ApiDevMailboxRoute
   '/api/dev/set-role': typeof ApiDevSetRoleRoute
   '/api/documents/$id': typeof ApiDocumentsIdRoute
   '/api/documents/preview-bbbee': typeof ApiDocumentsPreviewBbbeeRoute
@@ -513,6 +539,7 @@ export interface FileRoutesById {
   '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
+  '/api/reminders/sweep': typeof ApiRemindersSweepRoute
   '/api/tender/$tenderId': typeof ApiTenderTenderIdRouteWithChildren
   '/api/tenders/$companyId': typeof ApiTendersCompanyIdRoute
   '/api/tenders/analyze': typeof ApiTendersAnalyzeRoute
@@ -527,6 +554,7 @@ export interface FileRoutesById {
   '/api/eft/admin/all': typeof ApiEftAdminAllRoute
   '/api/eft/request/$paymentId': typeof ApiEftRequestPaymentIdRoute
   '/api/eft/upload-proof/$paymentId': typeof ApiEftUploadProofPaymentIdRoute
+  '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
@@ -562,6 +590,7 @@ export interface FileRouteTypes {
     | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/dashboard/activity'
+    | '/api/dev/mailbox'
     | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
@@ -573,6 +602,7 @@ export interface FileRouteTypes {
     | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
+    | '/api/reminders/sweep'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -587,6 +617,7 @@ export interface FileRouteTypes {
     | '/api/eft/admin/all'
     | '/api/eft/request/$paymentId'
     | '/api/eft/upload-proof/$paymentId'
+    | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
     | '/api/eft/admin/$paymentId/confirm'
@@ -620,6 +651,7 @@ export interface FileRouteTypes {
     | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/dashboard/activity'
+    | '/api/dev/mailbox'
     | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
@@ -631,6 +663,7 @@ export interface FileRouteTypes {
     | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
+    | '/api/reminders/sweep'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -645,6 +678,7 @@ export interface FileRouteTypes {
     | '/api/eft/admin/all'
     | '/api/eft/request/$paymentId'
     | '/api/eft/upload-proof/$paymentId'
+    | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
     | '/api/eft/admin/$paymentId/confirm'
@@ -678,6 +712,7 @@ export interface FileRouteTypes {
     | '/api/billing/packages'
     | '/api/companies/$companyId'
     | '/api/dashboard/activity'
+    | '/api/dev/mailbox'
     | '/api/dev/set-role'
     | '/api/documents/$id'
     | '/api/documents/preview-bbbee'
@@ -689,6 +724,7 @@ export interface FileRouteTypes {
     | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
+    | '/api/reminders/sweep'
     | '/api/tender/$tenderId'
     | '/api/tenders/$companyId'
     | '/api/tenders/analyze'
@@ -703,6 +739,7 @@ export interface FileRouteTypes {
     | '/api/eft/admin/all'
     | '/api/eft/request/$paymentId'
     | '/api/eft/upload-proof/$paymentId'
+    | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
     | '/api/eft/admin/$paymentId/confirm'
@@ -734,6 +771,7 @@ export interface RootRouteChildren {
   ApiBillingPackagesRoute: typeof ApiBillingPackagesRoute
   ApiCompaniesCompanyIdRoute: typeof ApiCompaniesCompanyIdRoute
   ApiDashboardActivityRoute: typeof ApiDashboardActivityRoute
+  ApiDevMailboxRoute: typeof ApiDevMailboxRoute
   ApiDevSetRoleRoute: typeof ApiDevSetRoleRoute
   ApiDocumentsIdRoute: typeof ApiDocumentsIdRoute
   ApiDocumentsPreviewBbbeeRoute: typeof ApiDocumentsPreviewBbbeeRoute
@@ -745,6 +783,7 @@ export interface RootRouteChildren {
   ApiReferralsClaimRoute: typeof ApiReferralsClaimRoute
   ApiReferralsLookupRoute: typeof ApiReferralsLookupRoute
   ApiReferralsMyRoute: typeof ApiReferralsMyRoute
+  ApiRemindersSweepRoute: typeof ApiRemindersSweepRoute
   ApiTenderTenderIdRoute: typeof ApiTenderTenderIdRouteWithChildren
   ApiTendersCompanyIdRoute: typeof ApiTendersCompanyIdRoute
   ApiTendersAnalyzeRoute: typeof ApiTendersAnalyzeRoute
@@ -756,6 +795,7 @@ export interface RootRouteChildren {
   ApiDocumentsDownloadDocIdRoute: typeof ApiDocumentsDownloadDocIdRoute
   ApiEftAdminAllRoute: typeof ApiEftAdminAllRoute
   ApiEftUploadProofPaymentIdRoute: typeof ApiEftUploadProofPaymentIdRoute
+  ApiRemindersTestCompanyIdRoute: typeof ApiRemindersTestCompanyIdRoute
   ApiEftAdminPaymentIdConfirmRoute: typeof ApiEftAdminPaymentIdConfirmRoute
   ApiEftAdminPaymentIdRejectRoute: typeof ApiEftAdminPaymentIdRejectRoute
   ApiEftAdminProofPaymentIdRoute: typeof ApiEftAdminProofPaymentIdRoute
@@ -945,6 +985,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiDashboardActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dev/mailbox': {
+      id: '/api/dev/mailbox'
+      path: '/api/dev/mailbox'
+      fullPath: '/api/dev/mailbox'
+      preLoaderRoute: typeof ApiDevMailboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/dev/set-role': {
       id: '/api/dev/set-role'
       path: '/api/dev/set-role'
@@ -1020,6 +1067,13 @@ declare module '@tanstack/react-router' {
       path: '/api/referrals/my'
       fullPath: '/api/referrals/my'
       preLoaderRoute: typeof ApiReferralsMyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reminders/sweep': {
+      id: '/api/reminders/sweep'
+      path: '/api/reminders/sweep'
+      fullPath: '/api/reminders/sweep'
+      preLoaderRoute: typeof ApiRemindersSweepRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tender/$tenderId': {
@@ -1111,6 +1165,13 @@ declare module '@tanstack/react-router' {
       path: '/api/eft/upload-proof/$paymentId'
       fullPath: '/api/eft/upload-proof/$paymentId'
       preLoaderRoute: typeof ApiEftUploadProofPaymentIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reminders/test/$companyId': {
+      id: '/api/reminders/test/$companyId'
+      path: '/api/reminders/test/$companyId'
+      fullPath: '/api/reminders/test/$companyId'
+      preLoaderRoute: typeof ApiRemindersTestCompanyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tender/$tenderId/sbd4': {
@@ -1246,6 +1307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingPackagesRoute: ApiBillingPackagesRoute,
   ApiCompaniesCompanyIdRoute: ApiCompaniesCompanyIdRoute,
   ApiDashboardActivityRoute: ApiDashboardActivityRoute,
+  ApiDevMailboxRoute: ApiDevMailboxRoute,
   ApiDevSetRoleRoute: ApiDevSetRoleRoute,
   ApiDocumentsIdRoute: ApiDocumentsIdRoute,
   ApiDocumentsPreviewBbbeeRoute: ApiDocumentsPreviewBbbeeRoute,
@@ -1257,6 +1319,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiReferralsClaimRoute: ApiReferralsClaimRoute,
   ApiReferralsLookupRoute: ApiReferralsLookupRoute,
   ApiReferralsMyRoute: ApiReferralsMyRoute,
+  ApiRemindersSweepRoute: ApiRemindersSweepRoute,
   ApiTenderTenderIdRoute: ApiTenderTenderIdRouteWithChildren,
   ApiTendersCompanyIdRoute: ApiTendersCompanyIdRoute,
   ApiTendersAnalyzeRoute: ApiTendersAnalyzeRoute,
@@ -1268,6 +1331,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDocumentsDownloadDocIdRoute: ApiDocumentsDownloadDocIdRoute,
   ApiEftAdminAllRoute: ApiEftAdminAllRoute,
   ApiEftUploadProofPaymentIdRoute: ApiEftUploadProofPaymentIdRoute,
+  ApiRemindersTestCompanyIdRoute: ApiRemindersTestCompanyIdRoute,
   ApiEftAdminPaymentIdConfirmRoute: ApiEftAdminPaymentIdConfirmRoute,
   ApiEftAdminPaymentIdRejectRoute: ApiEftAdminPaymentIdRejectRoute,
   ApiEftAdminProofPaymentIdRoute: ApiEftAdminProofPaymentIdRoute,

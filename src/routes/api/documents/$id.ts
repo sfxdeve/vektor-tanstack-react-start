@@ -245,6 +245,17 @@ export const Route = createFileRoute("/api/documents/$id")({
           }
         )(updates as never).where(eq(complianceDocuments.id, docId));
 
+        // If expiry or compliance flag changed, clear idempotency so new thresholds can fire
+        if ("expiryDate" in updates || "isCompliant" in updates) {
+          try {
+            await (db.delete(sentReminders).where as unknown as (c: unknown) => Promise<unknown>)(
+              eq(sentReminders.documentId, docId),
+            );
+          } catch (e) {
+            console.warn("Failed to clear sent_reminders after doc edit", docId, e);
+          }
+        }
+
         const updatedRows = await (
           db.select().from(complianceDocuments).where as unknown as (
             c: unknown,
