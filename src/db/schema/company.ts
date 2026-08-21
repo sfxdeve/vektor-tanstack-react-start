@@ -27,3 +27,5 @@ export const companies = sqliteTable(
   },
   (t) => [index("companies_userId_idx").on(t.userId)],
 );
+
+export type CompanyRow = typeof companies.$inferSelect;

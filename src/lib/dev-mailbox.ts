@@ -47,14 +47,8 @@ export function clearEmails(): void {
 }
 
 /**
- * Capture a raw payload posted to /api/dev/mailbox — normalizes loose
- * shapes (to/subject/html/type) into a CapturedEmail. Kept as
- * `addRawCapture` for backward compat; prefer `captureRawEmail` for new code.
+ * Normalize a loose payload (posted to /api/dev/mailbox) into a CapturedEmail.
  */
-export function addRawCapture(raw: unknown): CapturedEmail {
-  return captureRawEmail(raw);
-}
-
 export function captureRawEmail(raw: unknown): CapturedEmail {
   const id = `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();

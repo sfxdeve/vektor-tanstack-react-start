@@ -3,11 +3,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 
+import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/app")({
   component: AppPage,
@@ -418,26 +418,14 @@ function DownloadSbdButton({ tenderId, form }: { tenderId: string; form: "sbd4" 
 
 function AppPage() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireUser();
   const [companies, setCompanies] = useState<Array<Record<string, unknown>>>([]);
   const [tenders, setTenders] = useState<Array<Record<string, unknown>>>([]);
   const [documents, setDocuments] = useState<Array<Record<string, unknown>>>([]);
   const [credits, setCredits] = useState<number | null>(null);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role === "admin" && !impersonatedBy) {
-      void navigate({ to: "/admin" });
-    }
-  }, [session, isPending, navigate]);
+  useRequireUser();
 
   const loadCompanyBundle = useCallback(async (companyId: string) => {
     try {

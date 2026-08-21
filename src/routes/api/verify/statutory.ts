@@ -2,46 +2,34 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { verify } from "@/lib/verification";
 
+import { asString } from "@/lib/request-utils";
+
 export const Route = createFileRoute("/api/verify/statutory")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: Record<string, unknown>;
-        try {
-          body = (await request.json()) as Record<string, unknown>;
-        } catch {
-          return new Response(JSON.stringify({ detail: "Invalid JSON" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const kind = (body.kind ?? "") as string;
-        const value = (body.value ?? "") as string;
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+        if (!body) return Response.json({ detail: "Invalid JSON" }, { status: 400 });
+
+        const kind = asString(body.kind ?? "");
+        const value = asString(body.value ?? "");
         const result = verify(kind, value);
         if (!result) {
-          return new Response(JSON.stringify({ detail: `Unknown verification kind: ${kind}` }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
+          return Response.json(
+            { detail: `Unknown verification kind '${kind}'. Use one of: cipc, sars, csd.` },
+            { status: 400 },
+          );
         }
-        return new Response(JSON.stringify(result), {
-          headers: { "content-type": "application/json" },
-        });
+        return Response.json(result);
       },
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const kind = url.searchParams.get("kind") ?? "";
-        const value = url.searchParams.get("value") ?? "";
-        const result = verify(kind, value);
-        if (!result) {
-          return new Response(JSON.stringify({ detail: `Unknown verification kind: ${kind}` }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify(result), {
-          headers: { "content-type": "application/json" },
-        });
+        const result = verify(
+          url.searchParams.get("kind") ?? "",
+          url.searchParams.get("value") ?? "",
+        );
+        if (!result) return Response.json({ detail: "Unknown verification kind" }, { status: 400 });
+        return Response.json(result);
       },
     },
   },

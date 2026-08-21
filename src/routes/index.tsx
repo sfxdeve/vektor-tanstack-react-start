@@ -4,20 +4,22 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth/auth-client";
 
+import { asVektorSession } from "@/lib/auth/auth-client";
+
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 function LandingPage() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: rawData, isPending } = authClient.useSession();
+  const session = asVektorSession(rawData);
 
   useEffect(() => {
     if (isPending) return;
-    if (session?.user) {
-      const role = (session.user as unknown as { role?: string }).role;
-      const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-        ?.impersonatedBy;
+    if (session?.user && session.session) {
+      const role = session.user.role;
+      const impersonatedBy = session.session.impersonatedBy;
       if (role === "admin" && !impersonatedBy) {
         void navigate({ to: "/admin" });
       } else {

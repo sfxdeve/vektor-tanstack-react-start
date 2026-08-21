@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
+import { desc, eq } from "drizzle-orm";
 
 import { createDb } from "@/db";
 import { eftPayments } from "@/db/schema/eft";
-import { eq, toApiEftPayment } from "@/lib/eft-api";
-import { requireAdmin } from "@/lib/admin-server";
+import type { EftStatus } from "@/lib/eft";
+import { toApiEftPayment } from "@/lib/eft-api";
+import { requireAdmin } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/eft/admin/all")({
   server: {
@@ -16,21 +18,15 @@ export const Route = createFileRoute("/api/eft/admin/all")({
         const url = new URL(request.url);
         const statusFilter = url.searchParams.get("status");
 
-        const db = createDb(env.DB as unknown as D1Database);
-        let rows: (typeof eftPayments.$inferSelect)[];
-        if (statusFilter) {
-          rows = await (
-            db.select().from(eftPayments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof eftPayments.$inferSelect)[]>
-          )(eq(eftPayments.status, statusFilter));
-        } else {
-          rows = await db.select().from(eftPayments);
-        }
-        rows.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        return new Response(JSON.stringify({ payments: rows.map(toApiEftPayment) }), {
-          headers: { "content-type": "application/json" },
-        });
+        const db = createDb(env.DB);
+        const rows = statusFilter
+          ? await db
+              .select()
+              .from(eftPayments)
+              .where(eq(eftPayments.status, statusFilter as EftStatus))
+              .orderBy(desc(eftPayments.createdAt))
+          : await db.select().from(eftPayments).orderBy(desc(eftPayments.createdAt));
+        return Response.json({ payments: rows.map(toApiEftPayment) });
       },
     },
   },

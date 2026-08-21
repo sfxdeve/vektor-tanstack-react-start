@@ -48,14 +48,20 @@ export interface BankDetails {
   account_type: string;
 }
 
+/**
+ * Read bank details from env. Only account_type defaults ("Cheque"), matching
+ * backend/eft_service.py — the real account fields come from EFT_* secrets and
+ * are intentionally blank when unset so a misconfigured deploy is visible.
+ */
 export function getBankDetails(env: Record<string, string | undefined>): BankDetails {
   const strip = (v: string | undefined) => (v ?? "").trim().replace(/^"+|"+$/g, "");
-  const bank_name = strip(env.EFT_BANK_NAME) || "First National Bank";
-  const account_holder = strip(env.EFT_ACCOUNT_HOLDER) || "EcoBuiltConnect (Pty) Ltd";
-  const account_number = strip(env.EFT_ACCOUNT_NUMBER) || "62712345678";
-  const branch_code = strip(env.EFT_BRANCH_CODE) || "250655";
-  const account_type = strip(env.EFT_ACCOUNT_TYPE) || "Cheque";
-  return { bank_name, account_holder, account_number, branch_code, account_type };
+  return {
+    bank_name: strip(env.EFT_BANK_NAME),
+    account_holder: strip(env.EFT_ACCOUNT_HOLDER),
+    account_number: strip(env.EFT_ACCOUNT_NUMBER),
+    branch_code: strip(env.EFT_BRANCH_CODE),
+    account_type: strip(env.EFT_ACCOUNT_TYPE) || "Cheque",
+  };
 }
 
 export const ALLOWED_PROOF_TYPES: Record<string, string> = {

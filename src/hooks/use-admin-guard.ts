@@ -2,27 +2,42 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { authClient } from "@/lib/auth/auth-client";
-import { getUserRole, isImpersonating } from "@/lib/admin";
+import { asVektorSession, authClient } from "@/lib/auth/auth-client";
 
+/** True when an admin is currently wearing a user hat (impersonation active). */
+export function useImpersonationState() {
+  const { data: session } = authClient.useSession();
+  return {
+    impersonatedBy: session?.session.impersonatedBy ?? null,
+    role: session?.user.role ?? null,
+  };
+}
+
+/**
+ * Guard for /admin/* pages. Behavior mirrors the old AdminRoute:
+ *   - unauthenticated → /login
+ *   - authenticated non-admin (or an impersonating admin) → /app
+ */
 export function useAdminGuard() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { data, isPending } = authClient.useSession();
+  const session = asVektorSession(data);
+  const userId = session?.user?.id;
+  const isAdmin = session?.user?.role === "admin";
+  const impersonated = Boolean(session?.session?.impersonatedBy);
 
   useEffect(() => {
+    // Depend on primitives — the session object identity churns on every
+    // better-auth poll, which would otherwise re-trigger navigations.
     if (isPending) return;
-    if (!session?.user) {
+    if (!userId) {
       void navigate({ to: "/login" });
       return;
     }
-    const role = getUserRole(session as unknown as Parameters<typeof getUserRole>[0]);
-    const impersonated = isImpersonating(
-      session as unknown as Parameters<typeof isImpersonating>[0],
-    );
-    if (role !== "admin" || impersonated) {
+    if (!isAdmin || impersonated) {
       void navigate({ to: "/app" });
     }
-  }, [session, isPending, navigate]);
+  }, [isPending, userId, isAdmin, impersonated, navigate]);
 
   return { session, isPending };
 }

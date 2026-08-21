@@ -169,78 +169,24 @@ export function extractExpiryFromText(text: string): string | null {
   return null;
 }
 
-function decodeBytesToText(bytes: Uint8Array): string {
-  try {
-    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  } catch {
-    return "";
-  }
-}
-
-export function extractBbbeeLevelFromBytes(bytes: Uint8Array): number | null {
-  const text = decodeBytesToText(bytes);
-  return extractBbbeeLevelFromText(text);
-}
-
-export function extractExpiryFromBytes(bytes: Uint8Array): string | null {
-  const text = decodeBytesToText(bytes);
-  return extractExpiryFromText(text);
-}
-
 /**
- * Workers-native PDF text extraction via pdfjs-dist with TextDecoder fallback.
- * Tries pdfjs for real binary PDFs (compressed streams), falls back to raw
- * text scan for text-based PDFs and for environments where pdfjs fails.
+ * PDF text extraction on the Worker via unpdf — the serverless-friendly
+ * redistribution of Mozilla's pdf.js built for Cloudflare Workers.
+ * Mirrors the old pypdf behaviour: first N pages only.
  */
-export async function extractTextFromPdfBytes(bytes: Uint8Array): Promise<string> {
-  const raw = decodeBytesToText(bytes);
-  const header = raw.slice(0, 5);
-  if (!header.startsWith("%PDF")) return raw;
-
-  try {
-    const pdfjs = (await import("pdfjs-dist")) as unknown as {
-      getDocument: (opts: unknown) => { promise: Promise<unknown> };
-      GlobalWorkerOptions: { workerSrc: string };
-    };
-    // Disable worker in Workers/Node — run on main thread
-    if (pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = "";
-    const loadingTask = pdfjs.getDocument({
-      data: bytes,
-      isEvalSupported: false,
-      useWorkerFetch: false,
-      verbosity: 0,
-    });
-    const doc = (await (
-      loadingTask as unknown as {
-        promise: Promise<{
-          numPages: number;
-          getPage: (
-            n: number,
-          ) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str?: string }> }> }>;
-        }>;
-      }
-    ).promise) as {
-      numPages: number;
-      getPage: (
-        n: number,
-      ) => Promise<{ getTextContent: () => Promise<{ items: Array<{ str?: string }> }> }>;
-    };
-    const pages = Math.min(doc.numPages, 5);
-    let out = "";
-    for (let i = 1; i <= pages; i++) {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      for (const item of content.items) {
-        if (item.str) out += item.str + " ";
-      }
-      out += "\n";
-    }
-    // If pdfjs produced meaningful text, prefer it; else fall back
-    if (out.trim().length > 10) return out;
-    return raw;
-  } catch {
-    return raw;
+export async function extractTextFromPdfBytes(bytes: Uint8Array, maxPages = 10): Promise<string> {
+  const { getDocumentProxy, extractText } = await import("unpdf");
+  // Hand the bytes over as a latin1 binary string: pdf.js moves binary data
+  // through a message port, and workerd's structured clone rejects the source
+  // buffer once pdf.js detaches it. Strings never detach.
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
+  const pdf = await getDocumentProxy(binary);
+  const { text } = await extractText(pdf, { mergePages: false });
+  return text.slice(0, maxPages).join("\n");
 }
 
 export async function extractBbbeeLevelFromPdfBytes(bytes: Uint8Array): Promise<number | null> {

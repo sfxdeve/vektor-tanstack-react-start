@@ -1,8 +1,9 @@
 // oxlint-disable react/set-state-in-effect
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ListIcon, LogOutIcon, XIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { authClient } from "@/lib/auth/auth-client";
+import { asVektorSession, authClient } from "@/lib/auth/auth-client";
 
 const navItems = [
   { to: "/app", label: "Dashboard", testId: "nav-dashboard" },
@@ -17,13 +18,12 @@ const navItems = [
 export function Sidebar() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data: session } = authClient.useSession();
+  const { data: rawData } = authClient.useSession();
+  const session = asVektorSession(rawData);
   const user = session?.user;
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isImpersonating = Boolean(
-    (session?.session as unknown as { impersonatedBy?: string })?.impersonatedBy,
-  );
+  const isImpersonating = Boolean(session?.session?.impersonatedBy);
   const mobileTopbarTopClass = isImpersonating ? "top-[38px]" : "top-0";
 
   // oxlint-disable-next-line react/set-state-in-effect
@@ -55,7 +55,7 @@ export function Sidebar() {
           aria-label="Open navigation"
           className="flex h-10 w-10 -ml-2 items-center justify-center rounded-sm hover:bg-zinc-800"
         >
-          ☰
+          <ListIcon className="h-5 w-5" aria-hidden="true" />
         </button>
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-teal-500 font-heading text-xs font-black text-zinc-950">
@@ -102,7 +102,7 @@ export function Sidebar() {
             aria-label="Close navigation"
             className="-mr-2 -mt-1 flex h-9 w-9 items-center justify-center rounded-sm hover:bg-zinc-800 lg:hidden"
           >
-            ✕
+            <XIcon className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -145,7 +145,7 @@ export function Sidebar() {
                 title="Sign out"
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
               >
-                →
+                <LogOutIcon className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>

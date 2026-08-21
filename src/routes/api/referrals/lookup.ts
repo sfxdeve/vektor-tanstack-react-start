@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 
@@ -13,23 +12,15 @@ export const Route = createFileRoute("/api/referrals/lookup")({
         const code = (url.searchParams.get("code") ?? "").trim().toUpperCase();
 
         if (!code || code.length < 4 || code.length > 32) {
-          return new Response(JSON.stringify({ detail: "Referral code is required" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
+          return Response.json({ detail: "Referral code is required" }, { status: 400 });
         }
 
-        const db = createDb(env.DB as unknown as D1Database);
+        const db = createDb(env.DB);
         const preview = await lookupReferrer(db, code);
         if (!preview) {
-          return new Response(JSON.stringify({ detail: "Referral code not found" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
+          return Response.json({ detail: "Referral code not found" }, { status: 404 });
         }
-        return new Response(JSON.stringify(preview), {
-          headers: { "content-type": "application/json" },
-        });
+        return Response.json(preview);
       },
     },
   },

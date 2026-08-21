@@ -5,29 +5,19 @@
  * Thresholds: 30, 7, 0 days before expiry
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { complianceDocuments, sentReminders } from "@/db/schema/compliance";
 
 import { captureEmail } from "./dev-mailbox";
-import {
-  buildEmailHtml as buildEmailHtmlTpl,
-  DOC_TYPE_LABEL as DOC_LABEL_MAP,
-  subjectSuffix,
-  thresholdCopy as thresholdCopyTpl,
-} from "./reminder-template";
+import { buildEmailHtml, DOC_TYPE_LABEL, subjectSuffix } from "./reminder-template";
 
 export const REMINDER_THRESHOLDS = [30, 7, 0] as const;
 export type ReminderThreshold = (typeof REMINDER_THRESHOLDS)[number];
 
-// Re-export template helpers so existing imports from "@/lib/reminder" keep working.
-export const DOC_TYPE_LABEL = DOC_LABEL_MAP;
-export const thresholdCopy = thresholdCopyTpl;
-export const buildEmailHtml = buildEmailHtmlTpl;
-
-// ---------- Env helpers (thin wrappers — merge logic lives in reminder-env for routes) ----------
+// ---------- Env helpers (env comes straight from the Worker binding) ----------
 
 export function getAppUrl(env: Record<string, string | undefined>): string {
   const raw = (
@@ -253,22 +243,25 @@ export async function sendDocumentReminder(
   const documentId = document.id;
 
   if (!force) {
-    // Check idempotency
-    const existing = await (
-      db.select().from(sentReminders).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof sentReminders.$inferSelect)[]>
-    )(
-      and(
-        eq(sentReminders.companyId, companyId),
-        eq(sentReminders.documentId, documentId),
-        eq(sentReminders.threshold, threshold),
-      ),
-    );
-    if (existing.length > 0) {
-      const row = existing[0]!;
-      const sentAt = row.sentAt ? new Date(row.sentAt).toISOString() : undefined;
-      return { status: "skipped", reason: "already sent", sentAt, threshold };
+    // Idempotency: one row per (company, document, threshold).
+    const existing = await db
+      .select()
+      .from(sentReminders)
+      .where(
+        and(
+          eq(sentReminders.companyId, companyId),
+          eq(sentReminders.documentId, documentId),
+          eq(sentReminders.threshold, threshold),
+        ),
+      );
+    if (existing[0]) {
+      const row = existing[0];
+      return {
+        status: "skipped",
+        reason: "already sent",
+        sentAt: new Date(row.sentAt).toISOString(),
+        threshold,
+      };
     }
   }
 
@@ -368,22 +361,18 @@ export async function sweepAndSend(
     SendReminderResult & { companyId: string; documentId: string; threshold: number }
   > = [];
 
-  // Fetch all companies where alerts_enabled
-  // Note: drizzle boolean handling — filter in JS for simplicity and compatibility
-  const allCompanies = await db.select().from(companies);
-  const enabledCompanies = allCompanies.filter(
-    (c) => c.alertsEnabled !== false && Boolean(c.contactEmail?.trim()),
-  );
+  const enabledCompanies = await db
+    .select()
+    .from(companies)
+    .where(and(eq(companies.alertsEnabled, true), isNotNull(companies.contactEmail)));
 
   for (const company of enabledCompanies) {
     if (!company.contactEmail?.trim()) continue;
 
-    // Fetch docs for this company
-    const docs = await (
-      db.select().from(complianceDocuments).where as unknown as (
-        c: unknown,
-      ) => Promise<(typeof complianceDocuments.$inferSelect)[]>
-    )(eq(complianceDocuments.companyId, company.id));
+    const docs = await db
+      .select()
+      .from(complianceDocuments)
+      .where(eq(complianceDocuments.companyId, company.id));
 
     for (const doc of docs) {
       if (!doc.expiryDate) continue;

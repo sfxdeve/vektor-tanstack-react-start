@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ensureCompanySetup } from "./helpers";
+import { pdfFixture } from "./fixtures";
 
 /**
  * Issue 11 — big-bang preview smoke.
@@ -108,15 +109,8 @@ test("preview smoke — full vertical chain", async ({ browser }) => {
   await userPage.goto("/analyze");
   await userPage.waitForLoadState("networkidle");
   await expect(userPage.getByTestId("upload-card")).toBeVisible({ timeout: 15000 });
-  const pdfBuffer = Buffer.from(
-    "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender document: required CIDB 4EB for electrical works\nendstream\nendobj\n",
-  );
-  await userPage.getByTestId("file-input").setInputFiles({
-    name: "smoke-tender.pdf",
-    mimeType: "application/pdf",
-    buffer: pdfBuffer,
-  });
-  await expect(userPage.getByTestId("selected-file-name")).toContainText("smoke-tender.pdf");
+  await userPage.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
+  await expect(userPage.getByTestId("selected-file-name")).toContainText("tender-4eb");
   await userPage.getByTestId("analyze-btn").click();
   await expect(userPage.getByTestId("results-section")).toBeVisible({ timeout: 20000 });
   await expect(userPage.getByTestId("verdict-label")).toContainText(/GO|CAUTION|NO-GO/);
@@ -203,15 +197,10 @@ test("preview smoke — full vertical chain", async ({ browser }) => {
     const throwaway = await browser.newContext();
     const tp = await throwaway.newPage();
     await signUp(tp, "Smoke Admin", effectiveAdminEmail);
-    const promoteStatus = await tp.evaluate(async (em: string) => {
-      const r = await fetch("/api/dev/set-role", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: em, role: "admin" }),
-      });
-      return r.status;
-    }, effectiveAdminEmail);
-    expect(promoteStatus).toBe(200);
+    const promoteRes = await tp.request.post("/api/dev/set-role", {
+      data: { email: effectiveAdminEmail, role: "admin" },
+    });
+    expect(promoteRes.status()).toBe(200);
     await throwaway.close();
   }
   // Deterministic admin login (fresh context, unauthenticated)
@@ -292,12 +281,11 @@ test("preview smoke — full vertical chain", async ({ browser }) => {
   // --- Reminder sweep idempotency -------------------------------------------
   // Upload a compliance document expiring in exactly 7 days via API
   const expiry7 = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const certBytes = pdfFixture("cert-tax-pin.pdf").buffer;
   const uploadDoc = await userPage.evaluate(
-    async ({ cid, exp, em }: { cid: string; exp: string; em: string }) => {
+    async ({ cid, exp, em, bytes }: { cid: string; exp: string; em: string; bytes: number[] }) => {
       const fd = new FormData();
-      const blob = new Blob([`Valid until ${exp}\nTax clearance mock.\n`], {
-        type: "application/pdf",
-      });
+      const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
       fd.append("file", blob, "smoke-tax.pdf");
       fd.append("doc_type", "TAX_PIN");
       fd.append("expiry_date", exp);
@@ -306,7 +294,7 @@ test("preview smoke — full vertical chain", async ({ browser }) => {
       const r = await fetch("/api/documents/upload", { method: "POST", body: fd });
       return r.status;
     },
-    { cid: companyId, exp: expiry7, em: userEmail },
+    { cid: companyId, exp: expiry7, em: userEmail, bytes: [...certBytes] },
   );
   expect([200, 201]).toContain(uploadDoc);
 

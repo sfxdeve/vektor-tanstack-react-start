@@ -5,8 +5,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { authClient } from "@/lib/auth/auth-client";
-import { getUserRole } from "@/lib/admin";
+import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -127,31 +126,17 @@ function AdminUsersPage() {
     }
     setImpersonatingId(u.id);
     try {
-      // use better-auth admin plugin
-      await (
-        authClient as unknown as {
-          admin: { impersonateUser: (a: { userId: string }) => Promise<unknown> };
-        }
-      ).admin.impersonateUser({ userId: u.id });
-      // better-auth sets cookie and returns session; navigate to app as impersonated user
-      toast.success(`Impersonating ${u.email}`);
-      // force reload to reflect new session with impersonatedBy
-      window.location.href = "/app";
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Impersonation failed";
-      // fallback: try custom endpoint
-      try {
-        const r = await fetch(`/api/admin/impersonate/${u.id}`, { method: "POST" });
-        if (r.ok) {
-          toast.success(`Impersonating ${u.email}`);
-          window.location.href = "/app";
-          return;
-        }
+      // Single guarded path: the endpoint wraps better-auth's
+      // auth.api.impersonateUser behind requireAdmin.
+      const r = await fetch(`/api/admin/impersonate/${u.id}`, { method: "POST" });
+      if (!r.ok) {
         const body = (await r.json().catch(() => null)) as { detail?: string } | null;
-        toast.error(body?.detail || msg);
-      } catch {
-        toast.error(msg);
+        toast.error(body?.detail || "Impersonation failed");
+        return;
       }
+      toast.success(`Impersonating ${u.email}`);
+      // Full reload so every surface picks up the impersonated session cookie.
+      window.location.href = "/app";
     } finally {
       setImpersonatingId(null);
     }
@@ -336,7 +321,7 @@ function AdminUsersPage() {
                             // alias for older test suite expecting admin-impersonate-*
                             // we expose both via same button
                             onClick={() => void handleImpersonate(u)}
-                            disabled={impersonatingId === u.id || u.id === session.user.id}
+                            disabled={impersonatingId === u.id || u.id === session?.user?.id}
                             className="rounded-sm border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
                           >
                             {impersonatingId === u.id ? "…" : "Impersonate"}
@@ -350,7 +335,7 @@ function AdminUsersPage() {
                               setDeleteReason("");
                               setDeleteConfirmEmail("");
                             }}
-                            disabled={u.role === "admin" || u.id === session.user.id}
+                            disabled={u.role === "admin" || u.id === session?.user?.id}
                             className="rounded-sm border border-red-900/40 bg-red-950/40 px-2.5 py-1 text-xs font-semibold text-red-300 hover:bg-red-900/40 disabled:opacity-30"
                           >
                             Delete

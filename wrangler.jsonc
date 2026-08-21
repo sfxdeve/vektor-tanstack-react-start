@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "vektor-tanstack-react-start",
   "compatibility_date": "2026-08-20",
-  "main": "@tanstack/react-start/server-entry",
+  "main": "worker.ts",
   "observability": {
     "enabled": true,
   },

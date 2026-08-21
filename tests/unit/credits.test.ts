@@ -1,115 +1,94 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { consumeCredit, getCredits, refundCredit, setCredits } from "@/lib/credits";
-import { createDb } from "@/db";
+import { companies } from "@/db/schema/company";
+import { companyCredits } from "@/db/schema/credits";
+import { user } from "@/db/schema/auth";
+import { consumeCredit, ensureCredits, getCredits, refundCredit, setCredits } from "@/lib/credits";
 
-// Instead of mocking D1, test the pure consume/refund logic by using an in-memory implementation
-// We exercise the actual functions with a stubbed Db that returns controllable results.
+import type { Database } from "@/db";
 
-describe("credits — consume/refund edge cases", () => {
-  it("getCredits returns 0 when no row", async () => {
-    const fakeDb = {
-      select: () => ({
-        from: () => ({
-          where: async () => [],
-        }),
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    expect(await getCredits(fakeDb, "nonexistent")).toBe(0);
+import { createTestDb } from "../helpers/test-db";
+
+async function seedCompany(db: Database, id = "co-1"): Promise<string> {
+  const now = new Date();
+  await db.insert(user).values({
+    id: "u-1",
+    name: "Owner",
+    email: `${id}@example.com`,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.insert(companies).values({
+    id,
+    userId: "u-1",
+    companyName: "Test Co",
+    cipcNum: "2021/123456/07",
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+describe("credits — consume/refund against real SQL", () => {
+  it("getCredits returns 0 when the company has no ledger row", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+    expect(await getCredits(db, "co-1")).toBe(0);
   });
 
-  it("consumeCredit returns false when 0 credits", async () => {
-    const fakeDb = {
-      select: () => ({
-        from: () => ({
-          where: async () => [{ companyId: "c1", credits: 0, updatedAt: new Date() }],
-        }),
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    expect(await consumeCredit(fakeDb, "c1")).toBe(false);
+  it("consumeCredit spends a credit and returns true", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+    await setCredits(db, "co-1", 5);
+
+    expect(await consumeCredit(db, "co-1")).toBe(true);
+    expect(await getCredits(db, "co-1")).toBe(4);
   });
 
-  it("consumeCredit succeeds when credits >0 and decrements", async () => {
-    let updated: unknown = null;
-    const fakeDb = {
-      select: () => ({
-        from: () => ({
-          where: async () => [{ companyId: "c1", credits: 5, updatedAt: new Date() }],
-        }),
-      }),
-      update: () => ({
-        set: (v: unknown) => ({
-          where: async () => {
-            updated = v;
-          },
-        }),
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    const ok = await consumeCredit(fakeDb, "c1");
-    expect(ok).toBe(true);
-    expect((updated as { credits: number }).credits).toBe(4);
+  it("consumeCredit returns false when balance is zero and never goes negative", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+    await setCredits(db, "co-1", 0);
+
+    expect(await consumeCredit(db, "co-1")).toBe(false);
+    expect(await getCredits(db, "co-1")).toBe(0);
   });
 
-  it("refundCredit increments credits", async () => {
-    let updated: unknown = null;
-    const fakeDb = {
-      select: () => ({
-        from: () => ({
-          where: async () => [{ companyId: "c1", credits: 2, updatedAt: new Date() }],
-        }),
-      }),
-      update: () => ({
-        set: (v: unknown) => ({
-          where: async () => {
-            updated = v;
-          },
-        }),
-      }),
-      insert: () => ({
-        values: async () => {
-          // not called when row exists
-        },
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    await refundCredit(fakeDb, "c1");
-    expect((updated as { credits: number }).credits).toBe(3);
+  it("consumeCredit returns false when no ledger row exists at all", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+
+    expect(await consumeCredit(db, "co-1")).toBe(false);
+    expect(await getCredits(db, "co-1")).toBe(0);
   });
 
-  it("setCredits creates row when missing, updates when exists", async () => {
-    // missing -> insert
-    let inserted: unknown = null;
-    const dbMissing = {
-      select: () => ({
-        from: () => ({
-          where: async () => [],
-        }),
-      }),
-      insert: () => ({
-        values: async (v: unknown) => {
-          inserted = v;
-        },
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    await setCredits(dbMissing, "c2", 10);
-    expect((inserted as { credits: number }).credits).toBe(10);
+  it("refundCredit adds a credit back after a failed analysis", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+    await setCredits(db, "co-1", 2);
 
-    // exists -> update
-    let updated: unknown = null;
-    const dbExists = {
-      select: () => ({
-        from: () => ({
-          where: async () => [{ companyId: "c2", credits: 10, updatedAt: new Date() }],
-        }),
-      }),
-      update: () => ({
-        set: (v: unknown) => ({
-          where: async () => {
-            updated = v;
-          },
-        }),
-      }),
-    } as unknown as ReturnType<typeof createDb>;
-    await setCredits(dbExists, "c2", 7);
-    expect((updated as { credits: number }).credits).toBe(7);
+    await consumeCredit(db, "co-1");
+    await refundCredit(db, "co-1");
+    expect(await getCredits(db, "co-1")).toBe(2);
+  });
+
+  it("ensureCredits seeds once and is idempotent (trial grant)", async () => {
+    const db = createTestDb();
+    const companyId = await seedCompany(db);
+
+    await ensureCredits(db, companyId, 1);
+    await ensureCredits(db, companyId, 1);
+    expect(await getCredits(db, companyId)).toBe(1);
+  });
+
+  it("ledger rows cascade away with their company", async () => {
+    const db = createTestDb();
+    await seedCompany(db);
+    await setCredits(db, "co-1", 3);
+
+    await db.delete(companies).where(eq(companies.id, "co-1"));
+    const rows = await db.select().from(companyCredits);
+    expect(rows).toHaveLength(0);
   });
 });

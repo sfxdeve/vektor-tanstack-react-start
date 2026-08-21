@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { ensureCompanySetup } from "./helpers";
+import { pdfFixture } from "./fixtures";
 
 function uniqueEmail(prefix = "tender") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -48,18 +49,9 @@ test.describe("Tender Analysis Core", () => {
     await expect(page.getByTestId("upload-card")).toBeVisible();
     await expect(page.getByTestId("select-pppfa-system")).toBeVisible();
 
-    // Upload PDF with CIDB token 4EB to trigger stub inference
-    // Create a minimal PDF-like buffer that contains text "Tender required CIDB 4EB"
-    // Our pdf extraction fallback will handle plain text as raw
-    const pdfBuffer = Buffer.from(
-      "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender document: required CIDB 4EB for electrical works\nendstream\nendobj\n",
-    );
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
-    await expect(page.getByTestId("selected-file-name")).toContainText("tender.pdf");
+    // Real PDF with CIDB token 4EB — extraction runs through unpdf in workerd.
+    await page.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
+    await expect(page.getByTestId("selected-file-name")).toContainText("tender-4eb");
 
     await page.getByTestId("analyze-btn").click();
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
@@ -218,25 +210,20 @@ test.describe("Tender Analysis Core", () => {
     // follow-up navigations never race the router
     await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
-    // Check initial credits via companyCredits not exposed? We'll check via tender analyze count
-    // Upload a valid PDF and check that one credit consumed (but we seeded 5, so we can do multiple)
+    // The trial grant is exactly 1 credit — the first analysis consumes it,
+    // the second must be refused with the insufficient-credits error.
     await page.goto("/analyze");
     await page.waitForLoadState("networkidle");
-    const pdfBuffer = Buffer.from("%PDF-1.4 fake tender 4GB");
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
+    await page.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
     await page.getByTestId("analyze-btn").click();
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
-    // After one successful analysis, try another - should still have credits (5-1=4 left)
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender2.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
+
+    // Reload /analyze — the upload card is always rendered above the results.
+    await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
+    await page.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
     await page.getByTestId("analyze-btn").click();
-    await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Insufficient credits/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("results-section")).toHaveCount(0);
   });
 });

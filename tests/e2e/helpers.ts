@@ -19,3 +19,22 @@ export async function ensureCompanySetup(page: Page): Promise<void> {
   }
   await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 15000 });
 }
+
+/**
+ * Clear all session state (cookies + web storage) and unload the app.
+ *
+ * The still-mounted SPA keeps better-auth's last session in memory; after
+ * `clearCookies()` its guards react to the next poll and race whatever full
+ * page load comes next (flaky "navigation interrupted" on webkit). Unloading
+ * to about:blank first makes the subsequent navigation deterministic.
+ */
+export async function clearSession(page: Page): Promise<void> {
+  await page.context().clearCookies();
+  await page.evaluate(() => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+  });
+  await page.goto("about:blank");
+}

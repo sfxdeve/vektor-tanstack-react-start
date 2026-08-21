@@ -1,45 +1,45 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env as cfEnv } from "cloudflare:workers";
+import { env } from "cloudflare:workers";
 
 import { createDb } from "@/db";
-import { getReminderEnv } from "@/lib/reminder-env";
-import { getSessionFromRequest } from "@/lib/server-auth";
 import { sweepAndSend } from "@/lib/reminder";
-
-async function handleSweep(request: Request): Promise<Response> {
-  const env = getReminderEnv();
-  const isDev = env.DEV_MAILBOX === "1";
-  const session = await getSessionFromRequest(request).catch(() => null);
-  const userRole = (session?.user as unknown as { role?: string } | undefined)?.role;
-  const isAdmin = userRole === "admin";
-
-  if (!isAdmin && !isDev) {
-    return new Response(JSON.stringify({ detail: "Admin only" }), {
-      status: 403,
-      headers: { "content-type": "application/json" },
-    });
-  }
-
-  const db = createDb((cfEnv as unknown as { DB: D1Database }).DB as unknown as D1Database);
-  try {
-    const result = await sweepAndSend(db, env);
-    return new Response(JSON.stringify(result), {
-      headers: { "content-type": "application/json" },
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return new Response(JSON.stringify({ detail: msg }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
-  }
-}
+import { getSession, isAdminSession } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/reminders/sweep")({
   server: {
     handlers: {
-      POST: async ({ request }) => handleSweep(request),
-      GET: async ({ request }) => handleSweep(request),
+      POST: async ({ request }) => {
+        // Admin-only manual trigger (the cron schedule runs unattended).
+        // When DEV_MAILBOX=1 the mailbox captures everything anyway, so any
+        // authenticated user may trigger the sweep — this keeps the local
+        // e2e journeys single-session and never reaches production.
+        let allowed = false;
+        const session = await getSession(request);
+        if (isAdminSession(session)) {
+          allowed = true;
+        } else if (
+          (env as unknown as Record<string, string | undefined>).DEV_MAILBOX === "1" &&
+          session?.user
+        ) {
+          allowed = true;
+        }
+        if (!allowed) {
+          return Response.json({ detail: "Admin only" }, { status: 403 });
+        }
+
+        try {
+          const result = await sweepAndSend(
+            createDb(env.DB),
+            env as unknown as Record<string, string | undefined>,
+          );
+          return Response.json(result);
+        } catch (e) {
+          return Response.json(
+            { detail: e instanceof Error ? e.message : String(e) },
+            { status: 500 },
+          );
+        }
+      },
     },
   },
 });

@@ -62,73 +62,6 @@ const COL_SIGNATURE = [6 * CM, 10 * CM];
 
 // --- Helpers ---
 
-function pickString(
-  raw: Record<string, unknown>,
-  keys: string[],
-  fallback: string | null = null,
-): string | null {
-  for (const k of keys) {
-    const v = raw[k];
-    if (v == null || v === "") continue;
-    if (typeof v === "string") return v;
-    if (typeof v === "number" || typeof v === "boolean") return String(v);
-    // For other primitives, fall through; objects are not valid for SBD string fields
-    if (typeof v === "bigint") return String(v);
-  }
-  return fallback;
-}
-
-function pickNumber(raw: Record<string, unknown>, keys: string[]): number | null {
-  for (const k of keys) {
-    const v = raw[k];
-    if (v != null && v !== "") {
-      const n = Number(v);
-      if (!Number.isNaN(n)) return n;
-    }
-  }
-  return null;
-}
-
-function toSbdCompany(raw: unknown): SbdCompany {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const rawLevel = pickNumber(r, ["bbbee_level", "bbbeeLevel"]);
-  const bbbeeLevel = rawLevel != null && Number.isInteger(rawLevel) ? rawLevel : null;
-
-  return {
-    companyName: pickString(r, ["company_name", "companyName", "name"], "") ?? "",
-    cipcNum: pickString(r, ["cipc_num", "cipcNum"], "") ?? "",
-    csdMaaaNum: pickString(r, ["csd_maaa_num", "csdMaaaNum"]),
-    sarsTcsPin: pickString(r, ["sars_tcs_pin", "sarsTcsPin"]),
-    cidbCrsNum: pickString(r, ["cidb_crs_num", "cidbCrsNum"]),
-    bbbeeLevel,
-    authorisedSignatoryName: pickString(r, [
-      "authorised_signatory_name",
-      "authorisedSignatoryName",
-    ]),
-    authorisedSignatoryPosition: pickString(r, [
-      "authorised_signatory_position",
-      "authorisedSignatoryPosition",
-    ]),
-  };
-}
-
-function toSbdTender(raw: unknown): SbdTender {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const eligibleRaw = pickNumber(r, ["eligible_bbbee_points", "eligibleBbbeePoints"]);
-  return {
-    tenderNumber: pickString(r, ["tender_number", "tenderNumber"]),
-    title: pickString(r, ["title", "tender_title", "tenderTitle"], "") ?? "",
-    issuingEntity: pickString(r, ["issuing_entity", "issuingEntity"]),
-    closingDate: pickString(r, ["closing_date", "closingDate"]),
-    preferencePointSystem: pickString(r, [
-      "preference_point_system",
-      "preferencePointSystem",
-      "preference_system",
-    ]),
-    eligibleBbbeePoints: eligibleRaw,
-  };
-}
-
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -139,9 +72,7 @@ function formatDate(date: Date): string {
 }
 
 // Exported for unit testing — field mapping without PDF bytes
-export function getSbd4Fields(companyInput: unknown, tenderInput: unknown) {
-  const company = toSbdCompany(companyInput);
-  const tender = toSbdTender(tenderInput);
+export function getSbd4Fields(company: SbdCompany, tender: SbdTender) {
   return {
     header: "SBD 4",
     subHeader: "DECLARATION OF INTEREST",
@@ -191,13 +122,11 @@ export function getSbd4Fields(companyInput: unknown, tenderInput: unknown) {
 }
 
 export function getSbd61Fields(
-  companyInput: unknown,
-  tenderInput: unknown,
+  company: SbdCompany,
+  tender: SbdTender,
   preferenceSystemInput?: string | null,
   bbbeePointsInput?: number | null,
 ) {
-  const company = toSbdCompany(companyInput);
-  const tender = toSbdTender(tenderInput);
   const preferenceSystem = preferenceSystemInput === "90/10" ? "90/10" : "80/20";
   const maxPoints = preferenceSystem === "80/20" ? 20 : 10;
   const bbbeePoints =
@@ -453,11 +382,8 @@ function drawTable(state: BuilderState, rows: string[][], colWidths: number[]) {
 
 // --- Public generators ---
 
-export async function generateSbd4(
-  companyInput: unknown,
-  tenderInput: unknown,
-): Promise<Uint8Array> {
-  const fields = getSbd4Fields(companyInput, tenderInput);
+export async function generateSbd4(company: SbdCompany, tender: SbdTender): Promise<Uint8Array> {
+  const fields = getSbd4Fields(company, tender);
   const pdfDoc = await PDFDocument.create();
   let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -546,12 +472,12 @@ export async function generateSbd4(
 }
 
 export async function generateSbd61(
-  companyInput: unknown,
-  tenderInput: unknown,
+  company: SbdCompany,
+  tender: SbdTender,
   preferenceSystemInput?: string | null,
   bbbeePointsInput?: number | null,
 ): Promise<Uint8Array> {
-  const fields = getSbd61Fields(companyInput, tenderInput, preferenceSystemInput, bbbeePointsInput);
+  const fields = getSbd61Fields(company, tender, preferenceSystemInput, bbbeePointsInput);
   const pdfDoc = await PDFDocument.create();
   let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -645,7 +571,3 @@ export async function generateSbd61(
   const bytes = await pdfDoc.save();
   return bytes;
 }
-
-// Convenience aliases matching python naming
-export const generateSbd4Pdf = generateSbd4;
-export const generateSbd61Pdf = generateSbd61;

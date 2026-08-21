@@ -5,8 +5,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { authClient } from "@/lib/auth/auth-client";
-import { getUserRole } from "@/lib/admin";
+import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/companies")({
   component: AdminCompaniesPage,
@@ -143,15 +142,14 @@ function AdminCompaniesPage() {
     }
     setImpersonatingId(row.id);
     try {
-      await (
-        authClient as unknown as {
-          admin: { impersonateUser: (a: { userId: string }) => Promise<unknown> };
-        }
-      ).admin.impersonateUser({ userId: row.user_id });
+      const r = await fetch(`/api/admin/impersonate/${row.user_id}`, { method: "POST" });
+      if (!r.ok) {
+        const body = (await r.json().catch(() => null)) as { detail?: string } | null;
+        toast.error(body?.detail || "Impersonation failed");
+        return;
+      }
       toast.success(`Impersonating ${row.owner_email || "user"}`);
       window.location.href = "/app";
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Impersonation failed");
     } finally {
       setImpersonatingId(null);
     }

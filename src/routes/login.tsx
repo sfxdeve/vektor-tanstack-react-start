@@ -6,7 +6,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth/auth-client";
+import { asVektorSession, authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -31,22 +31,11 @@ function LoginPage() {
           },
         },
       );
-      // better-auth client may return data with requirePasswordChange via our old logic; handle generically
-      const data = res?.data as unknown as
-        | { requirePasswordChange?: boolean; resetToken?: string; reason?: string }
-        | undefined;
-      if (data?.requirePasswordChange) {
-        toast.info("An admin reset your password — pick a new one to continue.");
-        await navigate({
-          to: "/reset-password",
-          search: { token: data.resetToken ?? "", reason: data.reason } as never,
-        });
-        return;
-      }
+      void res;
       toast.success("Welcome back");
       // role-based redirect: fetch session to check role
-      const session = await authClient.getSession();
-      const role = (session?.data?.user as unknown as { role?: string })?.role;
+      const res2 = await authClient.getSession();
+      const role = asVektorSession(res2?.data)?.user?.role;
       if (role === "admin") {
         await navigate({ to: "/admin" });
       } else {

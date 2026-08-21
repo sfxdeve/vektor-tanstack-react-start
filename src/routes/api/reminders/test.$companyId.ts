@@ -1,143 +1,91 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env as cfEnv } from "cloudflare:workers";
-import { eq } from "drizzle-orm";
+import { env } from "cloudflare:workers";
+import { asc, eq } from "drizzle-orm";
 
 import { createDb } from "@/db";
-import { companies } from "@/db/schema/company";
-import { complianceDocuments } from "@/db/schema/compliance";
-import { getReminderEnv } from "@/lib/reminder-env";
+import { complianceDocuments, type ComplianceDocumentRow } from "@/db/schema/compliance";
 import { daysUntil, pickThreshold, sendDocumentReminder } from "@/lib/reminder";
-import { getSessionFromRequest } from "@/lib/server-auth";
+import { fetchOwnedCompany } from "@/lib/ownership";
+import { requireUser } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/reminders/test/$companyId")({
   server: {
     handlers: {
       POST: async ({ request, params }) => {
-        const session = await getSessionFromRequest(request);
-        if (!session?.user) {
-          return new Response(JSON.stringify({ detail: "Not authenticated" }), {
-            status: 401,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const session = await requireUser(request);
+        if (session instanceof Response) return session;
 
-        const companyId = (params as Record<string, string>).companyId!;
-        const url = new URL(request.url);
-        const docId = url.searchParams.get("doc_id") || url.searchParams.get("docId") || "";
-
-        const db = createDb((cfEnv as unknown as { DB: D1Database }).DB as unknown as D1Database);
-
-        const companyRows = await (
-          db.select().from(companies).where as unknown as (
-            c: unknown,
-          ) => Promise<(typeof companies.$inferSelect)[]>
-        )(eq(companies.id, companyId));
-        const company = companyRows[0];
-        if (!company) {
-          return new Response(JSON.stringify({ detail: "Company not found" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
-        }
-
-        const isAdmin = (session.user as unknown as { role?: string }).role === "admin";
-        if (!isAdmin && company.userId !== session.user.id) {
-          return new Response(JSON.stringify({ detail: "You don't have access to this company" }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const db = createDb(env.DB);
+        const company = await fetchOwnedCompany(db, params.companyId, session);
+        if (company instanceof Response) return company;
 
         if (!company.contactEmail?.trim()) {
-          return new Response(
-            JSON.stringify({
-              detail: "No contact_email set on this company — save one first in Company Setup.",
-            }),
-            { status: 400, headers: { "content-type": "application/json" } },
+          return Response.json(
+            { detail: "No contact_email set on this company — save one first in Company Setup." },
+            { status: 400 },
           );
         }
 
-        let doc: typeof complianceDocuments.$inferSelect | null = null;
-
+        const docId = new URL(request.url).searchParams.get("doc_id") ?? "";
+        let document: ComplianceDocumentRow | undefined;
         if (docId) {
-          const rows = await (
-            db.select().from(complianceDocuments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof complianceDocuments.$inferSelect)[]>
-          )(eq(complianceDocuments.id, docId));
+          const rows = await db
+            .select()
+            .from(complianceDocuments)
+            .where(eq(complianceDocuments.id, docId));
           const candidate = rows[0];
-          if (candidate && candidate.companyId === companyId) doc = candidate;
+          if (candidate?.companyId === params.companyId) document = candidate;
         } else {
-          // Pick soonest-to-expire doc for this company
-          const rows = await (
-            db.select().from(complianceDocuments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof complianceDocuments.$inferSelect)[]>
-          )(eq(complianceDocuments.companyId, companyId));
-          if (rows.length > 0) {
-            // Sort by expiry ascending (nulls last)
-            rows.sort((a, b) => {
-              if (!a.expiryDate && !b.expiryDate) return 0;
-              if (!a.expiryDate) return 1;
-              if (!b.expiryDate) return -1;
-              return (
-                new Date(a.expiryDate as Date).getTime() - new Date(b.expiryDate as Date).getTime()
-              );
-            });
-            doc = rows[0] ?? null;
-          }
+          // Soonest-to-expire compliant doc for this company.
+          const rows = await db
+            .select()
+            .from(complianceDocuments)
+            .where(eq(complianceDocuments.companyId, params.companyId))
+            .orderBy(asc(complianceDocuments.expiryDate));
+          document = rows[0];
         }
-
-        if (!doc) {
-          return new Response(
-            JSON.stringify({ detail: "No compliance documents to attach to the test reminder." }),
-            { status: 400, headers: { "content-type": "application/json" } },
+        if (!document) {
+          return Response.json(
+            { detail: "No compliance documents to attach to the test reminder." },
+            { status: 400 },
           );
         }
 
-        const expiryStr =
-          doc.expiryDate instanceof Date
-            ? doc.expiryDate.toISOString().slice(0, 10)
-            : String(doc.expiryDate ?? "");
-        const days = daysUntil(expiryStr);
-        const threshold = pickThreshold(days) ?? 30;
+        const threshold = pickThreshold(daysUntil(document.expiryDate ?? null)) ?? 30;
 
-        const env = getReminderEnv();
-
+        // force=true bypasses idempotency so testing works repeatedly.
         const result = await sendDocumentReminder(
           db,
-          env,
+          env as unknown as Record<string, string | undefined>,
           {
             id: company.id,
             companyName: company.companyName,
             contactEmail: company.contactEmail,
-            alertsEnabled: company.alertsEnabled,
+            alertsEnabled: Boolean(company.alertsEnabled),
           },
           {
-            id: doc.id,
-            docType: doc.docType,
-            fileName: doc.fileName,
-            expiryDate: doc.expiryDate as Date,
-            isCompliant: doc.isCompliant as boolean,
+            id: document.id,
+            docType: document.docType,
+            fileName: document.fileName,
+            expiryDate: document.expiryDate,
+            isCompliant: Boolean(document.isCompliant),
           },
           threshold,
-          true, // force — bypass idempotency so testing works repeatedly
+          true,
         );
 
         if (result.status !== "sent") {
-          return new Response(
-            JSON.stringify({
-              detail: `Email delivery failed: ${result.error || "unknown error"}. Check RESEND_API_KEY and SENDER_EMAIL, or contact support.`,
+          return Response.json(
+            {
+              detail:
+                `Email delivery failed: ${result.error || "unknown error"}. ` +
+                `Check RESEND_API_KEY and sender config, or contact support.`,
               result,
-            }),
-            { status: 424, headers: { "content-type": "application/json" } },
+            },
+            { status: 424 },
           );
         }
-
-        return new Response(
-          JSON.stringify({ company_id: companyId, document_id: doc.id, ...result }),
-          { headers: { "content-type": "application/json" } },
-        );
+        return Response.json({ company_id: params.companyId, document_id: document.id, ...result });
       },
     },
   },

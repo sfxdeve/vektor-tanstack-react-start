@@ -1,86 +1,39 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { env as cfEnv } from "cloudflare:workers";
 
-import { clearEmails, listEmails } from "@/lib/dev-mailbox";
-import { getMailboxEnv } from "@/lib/reminder-env";
+import { captureRawEmail, clearEmails, listEmails } from "@/lib/dev-mailbox";
 
-function isAllowed(_request?: Request): boolean {
-  const env = getMailboxEnv();
-  // Spec requires DEV_MAILBOX=1 for capture; strict — no DEV_AI_STUB or localhost fallback.
-  // Keeps dev mailbox from leaking in preview where only DEV_AI_STUB might be set.
-  return env.DEV_MAILBOX === "1" || process.env.DEV_MAILBOX === "1";
+function isAllowed(): boolean {
+  // Spec requires DEV_MAILBOX=1 for capture; strict — no DEV_AI_STUB or
+  // localhost fallback, so the mailbox never leaks into other preview runs.
+  return (
+    (cfEnv as unknown as Record<string, string | undefined>).DEV_MAILBOX === "1" ||
+    process.env.DEV_MAILBOX === "1"
+  );
+}
+
+function notAvailable(): Response {
+  return Response.json({ detail: "Not available" }, { status: 404 });
 }
 
 export const Route = createFileRoute("/api/dev/mailbox")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        if (!isAllowed(request)) {
-          return new Response(JSON.stringify({ detail: "Not available" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const emails = listEmails();
-        return new Response(JSON.stringify(emails), {
-          headers: { "content-type": "application/json" },
-        });
+      GET: async () => {
+        if (!isAllowed()) return notAvailable();
+        return Response.json(listEmails());
       },
       POST: async ({ request }) => {
-        if (!isAllowed()) {
-          return new Response(JSON.stringify({ detail: "Not available" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        let body: unknown;
-        const contentType = request.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          try {
-            body = await request.json();
-          } catch {
-            body = {};
-          }
-        } else {
-          try {
-            const text = await request.text();
-            try {
-              body = JSON.parse(text);
-            } catch {
-              body = { raw: text };
-            }
-          } catch {
-            body = {};
-          }
-        }
-
-        // Normalize and capture
-        const obj = (body ?? {}) as Record<string, unknown>;
-        if (obj.to || obj.subject || obj.html || obj.type) {
-          const { addRawCapture } = await import("@/lib/dev-mailbox");
-          const entry = addRawCapture(obj);
-          return new Response(JSON.stringify({ ok: true, id: entry.id, captured: entry }), {
-            headers: { "content-type": "application/json" },
-          });
-        }
-
-        const { addRawCapture } = await import("@/lib/dev-mailbox");
-        const entry = addRawCapture(obj);
-        return new Response(JSON.stringify({ ok: true, id: entry.id }), {
-          headers: { "content-type": "application/json" },
-        });
+        if (!isAllowed()) return notAvailable();
+        const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+        const entry = captureRawEmail(body);
+        return Response.json({ ok: true, id: entry.id, captured: entry });
       },
-      DELETE: async ({ request }) => {
-        if (!isAllowed(request)) {
-          return new Response(JSON.stringify({ detail: "Not available" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        const before = listEmails().length;
+      DELETE: async () => {
+        if (!isAllowed()) return notAvailable();
+        const cleared = listEmails().length;
         clearEmails();
-        return new Response(JSON.stringify({ ok: true, cleared: before }), {
-          headers: { "content-type": "application/json" },
-        });
+        return Response.json({ ok: true, cleared });
       },
     },
   },

@@ -1,14 +1,14 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
+import { and, count, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 
 import { createDb } from "@/db";
+import { user } from "@/db/schema/auth";
 import { complianceDocuments } from "@/db/schema/compliance";
 import { companies } from "@/db/schema/company";
 import { eftPayments } from "@/db/schema/eft";
-import { user } from "@/db/schema/auth";
 import { tenders } from "@/db/schema/tender";
-import { requireAdmin } from "@/lib/admin-server";
+import { requireAdmin } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/admin/stats")({
   server: {
@@ -16,65 +16,81 @@ export const Route = createFileRoute("/api/admin/stats")({
       GET: async ({ request }) => {
         const adminCheck = await requireAdmin(request);
         if (adminCheck instanceof Response) return adminCheck;
-        const db = createDb(env.DB as unknown as D1Database);
 
-        const usersRows = await db.select().from(user);
-        const companiesRows = await db.select().from(companies);
-        const tendersRows = await db.select().from(tenders);
-        const docsRows = await db.select().from(complianceDocuments);
-        const eftRows = await db.select().from(eftPayments);
-        const now = Date.now();
-        const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+        const db = createDb(env.DB);
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-        const admins = usersRows.filter(
-          (u) => (u as unknown as { role?: string }).role === "admin",
-        ).length;
-        const new30d = usersRows.filter(
-          (u) => new Date(u.createdAt as unknown as string | Date).getTime() >= thirtyDaysAgo,
-        ).length;
-        const companiesNew30d = companiesRows.filter(
-          (c) => new Date(c.createdAt as unknown as string | Date).getTime() >= thirtyDaysAgo,
-        ).length;
-        const tendersNew30d = tendersRows.filter(
-          (t) => new Date(t.createdAt as unknown as string | Date).getTime() >= thirtyDaysAgo,
-        ).length;
+        const scalar = async (q: Promise<Array<{ n: number }>>): Promise<number> =>
+          Number((await q)[0]?.n ?? 0);
+        const total = <C extends Parameters<typeof db.$count>[0]>(t: C) => db.$count(t);
 
-        const expiringThreshold = new Date(now + 30 * 24 * 60 * 60 * 1000);
-        const expiring30d = docsRows.filter((d) => {
-          if (!d.expiryDate || !d.isCompliant) return false;
-          const expiry = new Date(d.expiryDate as unknown as string | Date).getTime();
-          return expiry <= expiringThreshold.getTime() && expiry >= now;
-        }).length;
+        const [
+          usersTotal,
+          adminsTotal,
+          usersNew30d,
+          companiesTotal,
+          companiesNew30d,
+          tendersTotal,
+          tendersNew30d,
+          docsTotal,
+          docsExpiring30d,
+          activeSubs,
+          pendingReview,
+        ] = await Promise.all([
+          total(user),
+          scalar(db.select({ n: count() }).from(user).where(eq(user.role, "admin"))),
+          scalar(db.select({ n: count() }).from(user).where(gte(user.createdAt, thirtyDaysAgo))),
+          total(companies),
+          scalar(
+            db
+              .select({ n: count() })
+              .from(companies)
+              .where(gte(companies.createdAt, thirtyDaysAgo)),
+          ),
+          total(tenders),
+          scalar(
+            db.select({ n: count() }).from(tenders).where(gte(tenders.createdAt, thirtyDaysAgo)),
+          ),
+          total(complianceDocuments),
+          scalar(
+            db
+              .select({ n: count() })
+              .from(complianceDocuments)
+              .where(
+                and(
+                  eq(complianceDocuments.isCompliant, true),
+                  isNotNull(complianceDocuments.expiryDate),
+                  lte(complianceDocuments.expiryDate, in30Days),
+                ),
+              ),
+          ),
+          scalar(
+            db
+              .select({ n: sql<number>`count(distinct ${eftPayments.companyId})` })
+              .from(eftPayments)
+              .where(
+                and(eq(eftPayments.status, "confirmed"), eq(eftPayments.type, "subscription")),
+              ),
+          ),
+          scalar(
+            db
+              .select({ n: count() })
+              .from(eftPayments)
+              .where(eq(eftPayments.status, "pending_review")),
+          ),
+        ]);
 
-        const activeSubs = eftRows.filter(
-          (p) => p.status === "confirmed" && p.type === "subscription",
-        ).length;
-        const pendingReview = eftRows.filter((p) => p.status === "pending_review").length;
-
-        return new Response(
-          JSON.stringify({
-            users: {
-              total: usersRows.length,
-              admins,
-              new_30d: new30d,
-              pending_review: 0,
-              suspended: 0,
-            },
-            companies: { total: companiesRows.length, new_30d: companiesNew30d },
-            tenders: { total: tendersRows.length, new_30d: tendersNew30d },
-            documents: { total: docsRows.length, expiring_30d: expiring30d },
-            subscriptions: { active: activeSubs },
-            eft: {
-              total: eftRows.length,
-              pending_review: pendingReview,
-              confirmed: eftRows.filter((p) => p.status === "confirmed").length,
-              rejected: eftRows.filter((p) => p.status === "rejected").length,
-              awaiting_proof: eftRows.filter((p) => p.status === "awaiting_proof").length,
-            },
-            generated_at: new Date().toISOString(),
-          }),
-          { headers: { "content-type": "application/json" } },
-        );
+        return Response.json({
+          users: { total: usersTotal, admins: adminsTotal, new_30d: usersNew30d },
+          companies: { total: companiesTotal, new_30d: companiesNew30d },
+          tenders: { total: tendersTotal, new_30d: tendersNew30d },
+          documents: { total: docsTotal, expiring_30d: docsExpiring30d },
+          subscriptions: { active: activeSubs },
+          eft: { pending_review: pendingReview },
+          generated_at: now.toISOString(),
+        });
       },
     },
   },

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { authClient } from "@/lib/auth/auth-client";
 import { GoNoGoGauge } from "@/components/gonogo-gauge";
 
 export const Route = createFileRoute("/analyze")({
@@ -50,7 +50,7 @@ type TenderResult = {
 
 function AnalyzePage() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireUser();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -67,20 +67,7 @@ function AnalyzePage() {
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role === "admin" && !impersonatedBy) {
-      void navigate({ to: "/admin" });
-      return;
-    }
-  }, [session, isPending, navigate]);
+  useRequireUser();
 
   useEffect(() => {
     if (!session?.user) return;
@@ -725,7 +712,7 @@ function AnalyzePage() {
                 <Button
                   data-testid="download-sbd4-btn"
                   onClick={() => {
-                    const tid = result.tender_id ?? result.id;
+                    const tid = result.tender_id;
                     if (tid) void downloadSbd(tid, "sbd4");
                   }}
                   size="lg"
@@ -739,7 +726,7 @@ function AnalyzePage() {
                 <Button
                   data-testid="download-sbd61-btn"
                   onClick={() => {
-                    const tid = result.tender_id ?? result.id;
+                    const tid = result.tender_id;
                     if (tid) void downloadSbd(tid, "sbd61");
                   }}
                   size="lg"

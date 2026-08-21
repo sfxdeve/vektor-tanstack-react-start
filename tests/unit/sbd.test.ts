@@ -4,26 +4,26 @@ import { generateSbd4, generateSbd61, getSbd4Fields, getSbd61Fields } from "@/li
 
 describe("SBD field mapping — mirrors generate_sbd4/generate_sbd61", () => {
   const fullCompany = {
-    company_name: "Vektor Test Pty Ltd",
-    cipc_num: "2021/123456/07",
-    csd_maaa_num: "MAAA0123456",
-    sars_tcs_pin: "1234567890",
-    cidb_crs_num: "4GB",
-    bbbee_level: 2,
-    authorised_signatory_name: "Jane Doe",
-    authorised_signatory_position: "Director",
+    companyName: "Vektor Test Pty Ltd",
+    cipcNum: "2021/123456/07",
+    csdMaaaNum: "MAAA0123456",
+    sarsTcsPin: "1234567890",
+    cidbCrsNum: "4GB",
+    bbbeeLevel: 2,
+    authorisedSignatoryName: "Jane Doe",
+    authorisedSignatoryPosition: "Director",
   };
 
   const minimalCompany = {
-    company_name: "Minimal Co",
-    cipc_num: "2020/000001/07",
+    companyName: "Minimal Co",
+    cipcNum: "2020/000001/07",
   };
 
   const tenderFull = {
-    tender_number: "MUN/2024-INFRA-045",
+    tenderNumber: "MUN/2024-INFRA-045",
     title: "Supply and Delivery of Electrical Components for Municipal Infrastructure",
-    issuing_entity: "City of Tshwane Metropolitan Municipality",
-    closing_date: "2025-03-15",
+    issuingEntity: "City of Tshwane Metropolitan Municipality",
+    closingDate: "2025-03-15",
   };
 
   const tenderMinimal = {
@@ -72,13 +72,13 @@ describe("SBD field mapping — mirrors generate_sbd4/generate_sbd61", () => {
   it("SBD4 handles XML-sensitive characters without crashing", () => {
     const companyWithXml = {
       ...fullCompany,
-      company_name: "A & B <Test> Co",
-      cipc_num: "2021/123456/07",
+      companyName: "A & B <Test> Co",
+      cipcNum: "2021/123456/07",
     };
     const tenderWithXml = {
       ...tenderFull,
       title: "Tender for <special> & urgent Works > 2024",
-      issuing_entity: "Dept & Co <Test>",
+      issuingEntity: "Dept & Co <Test>",
     };
     const fields = getSbd4Fields(companyWithXml, tenderWithXml);
     const bidderMap = Object.fromEntries(fields.bidderDetails);
@@ -177,20 +177,20 @@ describe("SBD field mapping — mirrors generate_sbd4/generate_sbd61", () => {
 describe("SBD PDF generation — pdf-lib bytes", () => {
   it("generateSbd4 produces valid PDF bytes with %PDF header", async () => {
     const company = {
-      company_name: "Vektor Test Pty Ltd",
-      cipc_num: "2021/123456/07",
-      csd_maaa_num: "MAAA0123456",
-      sars_tcs_pin: "1234567890",
-      cidb_crs_num: "4GB",
-      bbbee_level: 1,
-      authorised_signatory_name: "Jane Doe",
-      authorised_signatory_position: "Director",
+      companyName: "Vektor Test Pty Ltd",
+      cipcNum: "2021/123456/07",
+      csdMaaaNum: "MAAA0123456",
+      sarsTcsPin: "1234567890",
+      cidbCrsNum: "4GB",
+      bbbeeLevel: 1,
+      authorisedSignatoryName: "Jane Doe",
+      authorisedSignatoryPosition: "Director",
     };
     const tender = {
-      tender_number: "MUN/2024-045",
+      tenderNumber: "MUN/2024-045",
       title: "Test Tender Title",
-      issuing_entity: "City Test",
-      closing_date: "2025-03-15",
+      issuingEntity: "City Test",
+      closingDate: "2025-03-15",
     };
     const bytes = await generateSbd4(company, tender);
     expect(bytes.length).toBeGreaterThan(1000);
@@ -200,15 +200,15 @@ describe("SBD PDF generation — pdf-lib bytes", () => {
 
   it("generateSbd61 produces valid PDF bytes and respects preference system", async () => {
     const company = {
-      company_name: "Vektor Test Pty Ltd",
-      cipc_num: "2021/123456/07",
-      bbbee_level: 3,
+      companyName: "Vektor Test Pty Ltd",
+      cipcNum: "2021/123456/07",
+      bbbeeLevel: 3,
     };
     const tender = {
-      tender_number: "T/123",
+      tenderNumber: "T/123",
       title: "Another Tender",
-      issuing_entity: "Dept",
-      closing_date: "2025-06-01",
+      issuingEntity: "Dept",
+      closingDate: "2025-06-01",
     };
     const bytes80 = await generateSbd61(company, tender, "80/20", 14);
     const bytes90 = await generateSbd61(company, tender, "90/10", 6);
@@ -221,7 +221,7 @@ describe("SBD PDF generation — pdf-lib bytes", () => {
   });
 
   it("empty cells still produce PDF without error and retain structure", async () => {
-    const company = { company_name: "", cipc_num: "" };
+    const company = { companyName: "", cipcNum: "" };
     const tender = { title: "" };
     const bytes4 = await generateSbd4(company, tender);
     const bytes61 = await generateSbd61(company, tender, "80/20", 0);
@@ -231,21 +231,21 @@ describe("SBD PDF generation — pdf-lib bytes", () => {
 
   it("handles long declaration text wrapping without throwing", async () => {
     const company = {
-      company_name:
+      companyName:
         "A very long company name that should wrap across multiple lines in the table cell to test flowable paragraph handling in the PDF generator",
-      cipc_num: "2021/123456/07",
-      csd_maaa_num: "MAAA0000001",
-      sars_tcs_pin: "1234567890",
-      cidb_crs_num: "9GB CE EB ME",
-      bbbee_level: 8,
+      cipcNum: "2021/123456/07",
+      csdMaaaNum: "MAAA0000001",
+      sarsTcsPin: "1234567890",
+      cidbCrsNum: "9GB CE EB ME",
+      bbbeeLevel: 8,
     };
     const tender = {
-      tender_number: "LONG/TENDER/NUMBER/WITH/VERY/LONG/IDENTIFIER/2024-001",
+      tenderNumber: "LONG/TENDER/NUMBER/WITH/VERY/LONG/IDENTIFIER/2024-001",
       title:
         "This is an extremely long tender title that is designed to test the text wrapping capabilities of the pdf-lib table implementation and ensure that long strings do not overflow the page margins but instead break into multiple lines correctly",
-      issuing_entity:
+      issuingEntity:
         "A Very Long Issuing Entity Name That Also Needs Wrapping — City of Somewhere Metropolitan Municipality Department of Infrastructure Development and Service Delivery",
-      closing_date: "2025-12-31",
+      closingDate: "2025-12-31",
     };
     const bytes = await generateSbd4(company, tender);
     expect(bytes.length).toBeGreaterThan(1000);
@@ -253,15 +253,10 @@ describe("SBD PDF generation — pdf-lib bytes", () => {
   });
 
   it("handles XML-sensitive characters in PDF generation without parser crash", async () => {
-    const company = { company_name: "A & B <Test> & Co", cipc_num: "2021/123456/07" };
-    const tender = { title: "Tender <special> & urgent > 2024", tender_number: "T&123<>" };
-    const bytes4 = await generateSbd4(company, tender as unknown as Record<string, unknown>);
-    const bytes61 = await generateSbd61(
-      company,
-      tender as unknown as Record<string, unknown>,
-      "80/20",
-      10,
-    );
+    const company = { companyName: "A & B <Test> & Co", cipcNum: "2021/123456/07" };
+    const tender = { title: "Tender <special> & urgent > 2024", tenderNumber: "T&123<>" };
+    const bytes4 = await generateSbd4(company, tender);
+    const bytes61 = await generateSbd61(company, tender, "80/20", 10);
     expect(bytes4.length).toBeGreaterThan(500);
     expect(bytes61.length).toBeGreaterThan(500);
   });

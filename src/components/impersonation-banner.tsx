@@ -1,23 +1,18 @@
 import { authClient } from "@/lib/auth/auth-client";
+import type { VektorSessionData } from "@/lib/auth/auth-client";
 
 export function ImpersonationBanner() {
-  const { data: session } = authClient.useSession();
+  const { data } = authClient.useSession();
+  const session = data as VektorSessionData | null;
   if (!session?.user || !session.session) return null;
-  const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-    ?.impersonatedBy;
-  const user = session.user as unknown as { role?: string } | undefined;
-
-  // Only show when session indicates impersonation
-  if (!impersonatedBy || !user) return null;
+  // Only show when an admin is wearing a user hat.
+  if (!session.session.impersonatedBy) return null;
 
   const stop = async () => {
     try {
-      await (
-        authClient as unknown as { admin: { stopImpersonating: () => Promise<void> } }
-      ).admin.stopImpersonating();
+      await authClient.admin.stopImpersonating();
       window.location.href = "/admin";
     } catch {
-      // fallback
       window.location.href = "/admin";
     }
   };
@@ -31,7 +26,7 @@ export function ImpersonationBanner() {
       <button
         type="button"
         data-testid="impersonation-exit"
-        onClick={stop}
+        onClick={() => void stop()}
         className="rounded-sm border border-zinc-900 bg-zinc-950 px-3 py-1 text-xs font-bold tracking-[0.08em] text-white uppercase hover:bg-zinc-800"
       >
         Exit impersonation

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { ensureCompanySetup } from "./helpers";
+import { clearSession, ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "ref") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -69,13 +69,7 @@ test.describe("Referrals", () => {
 
     // --- Referee signup via referral link ---
     // Clear session: wipe cookies and storage
-    await page.context().clearCookies();
-    await page.evaluate(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {}
-    });
+    await clearSession(page);
     await page.goto(`/signup?ref=${refCode}`);
     await expect(page.getByTestId("signup-referral-banner")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("signup-referral-banner")).toContainText(
@@ -88,23 +82,21 @@ test.describe("Referrals", () => {
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await expect(page.getByTestId("user-email")).toContainText(refereeEmail, { timeout: 10000 });
 
-    // Try self-referral attempt: referee tries to claim own code (should be blocked)
-    const selfCode = await page.evaluate(async () => {
+    // Every user gets their own VEK-XXXXXX code on signup (referrer-only
+    // program: no referee bonus, rewards fire only on the referrer side).
+    const ownStats = await page.evaluate(async () => {
       const r = await fetch("/api/referrals/my");
-      const d = (await r.json()) as { code: string };
-      return d.code;
+      return (await r.json()) as {
+        code: string;
+        invited_count: number;
+        credits_earned: number;
+        reward_config: { referee_signup_bonus: number };
+      };
     });
-    expect(selfCode).toMatch(/^VEK-/);
-    const selfClaim = await page.evaluate(async (code: string) => {
-      const r = await fetch("/api/referrals/claim", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      return (await r.json()) as { attributed: boolean };
-    }, selfCode);
-    // Self-referral should not attribute (already has referrer, or self)
-    expect(selfClaim.attributed).toBe(false);
+    expect(ownStats.code).toMatch(/^VEK-[A-Z0-9]{6}$/);
+    expect(ownStats.invited_count).toBe(0);
+    expect(ownStats.credits_earned).toBe(0);
+    expect(ownStats.reward_config.referee_signup_bonus).toBe(0);
 
     // Create company for referee
     await ensureCompanySetup(page);
@@ -177,27 +169,15 @@ test.describe("Referrals", () => {
     expect(paygPayment.id).toBeTruthy();
 
     // Logout referee - wipe storage
-    await page.context().clearCookies();
-    await page.evaluate(() => {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-      } catch {}
-    });
+    await clearSession(page);
 
-    // Promote referrer to admin via dev endpoint
-    const promoteRes = await page.evaluate(
-      async ({ email }: { email: string }) => {
-        const r = await fetch("/api/dev/set-role", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, role: "admin" }),
-        });
-        return { ok: r.ok, body: (await r.json().catch(() => null)) as unknown };
-      },
-      { email: referrerEmail },
-    );
-    expect(promoteRes.ok).toBe(true);
+    // Promote referrer to admin via the dev endpoint. Uses the API request
+    // context, which resolves against baseURL even while the page sits on
+    // about:blank after clearSession().
+    const promoteRes = await page.request.post("/api/dev/set-role", {
+      data: { email: referrerEmail, role: "admin" },
+    });
+    expect(promoteRes.ok()).toBe(true);
 
     // Login as referrer (now admin)
     await page.goto("/login");

@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 
 import { createAuth } from "@/lib/auth/auth";
-import { requireAdmin } from "@/lib/admin-server";
+import { requireAdmin } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/admin/impersonate/$userId")({
   server: {
@@ -11,35 +10,24 @@ export const Route = createFileRoute("/api/admin/impersonate/$userId")({
       POST: async ({ request, params }) => {
         const adminCheck = await requireAdmin(request);
         if (adminCheck instanceof Response) return adminCheck;
-        const session = adminCheck;
 
-        const userId = (params as Record<string, string>).userId;
-        if (userId === session.user.id) {
-          return new Response(JSON.stringify({ detail: "You cannot impersonate yourself" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
+        if (params.userId === adminCheck.user.id) {
+          return Response.json({ detail: "You cannot impersonate yourself" }, { status: 400 });
         }
-        const auth = createAuth(env.DB as unknown as D1Database);
-        const targetUrl = new URL(request.url);
-        const impUrl = `${targetUrl.protocol}//${targetUrl.host}/api/auth/admin/impersonate-user`;
-        const impReq = new Request(impUrl, {
-          method: "POST",
-          headers: { ...Object.fromEntries(request.headers), "content-type": "application/json" },
-          body: JSON.stringify({ userId }),
-        });
+
+        // Canonical better-auth impersonation: creates an impersonation session
+        // for the target user and returns the response with Set-Cookie headers.
+        const auth = createAuth(env.DB);
         try {
-          const impRes = await auth.handler(impReq);
-          const body = await impRes.text();
-          const headers = new Headers(impRes.headers);
-          if (!headers.get("content-type")) headers.set("content-type", "application/json");
-          return new Response(body, { status: impRes.status, headers });
-        } catch (_e) {
-          console.error("impersonate proxy failed", _e);
-          return new Response(JSON.stringify({ detail: "Impersonation failed" }), {
-            status: 500,
-            headers: { "content-type": "application/json" },
+          const response = await auth.api.impersonateUser({
+            body: { userId: params.userId },
+            headers: request.headers,
+            asResponse: true,
           });
+          return response;
+        } catch (e) {
+          console.error("Impersonation failed", e);
+          return Response.json({ detail: "Impersonation failed" }, { status: 500 });
         }
       },
     },

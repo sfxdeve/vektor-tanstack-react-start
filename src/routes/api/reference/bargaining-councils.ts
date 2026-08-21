@@ -6,10 +6,7 @@ export const Route = createFileRoute("/api/reference/bargaining-councils")({
   server: {
     handlers: {
       GET: async () => {
-        const councils = listCouncilsPublic();
-        return new Response(JSON.stringify({ councils }), {
-          headers: { "content-type": "application/json" },
-        });
+        return Response.json({ councils: listCouncilsPublic() });
       },
     },
   },

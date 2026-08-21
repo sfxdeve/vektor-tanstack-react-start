@@ -137,7 +137,7 @@ nubx wrangler deployments list | head                                      # new
 ```
 
 Cron is registered automatically from `wrangler.jsonc`
-(`crons: ["0 8 * * *"]` — 08:00 UTC; see §8 note).
+(`crons: ["0 6 * * *"]` — 06:00 UTC = 08:00 SAST; see §8 note).
 
 ## 7. DNS switch and rollback
 
@@ -150,6 +150,17 @@ Cron is registered automatically from `wrangler.jsonc`
    emergency stop, not a feature toggle.
 
 ## 8. Known operational notes
+
+- **Worker entry** is `worker.ts`: it re-exports the TanStack Start fetch
+  handler as the default export and adds the `scheduled` cron handler that
+  runs the Compliance Guardian sweep. No build-time patching involved.
+- **PDF extraction** uses `unpdf` (serverless pdf.js) in the Worker; the e2e
+  fixtures under `tests/fixtures/` are real pdf-lib documents so the
+  extraction path is exercised end to end.
+- **No `/payment/success` or `/payment/cancel` routes**: those belonged to the
+  deleted Stripe hosted-checkout flow. With EFT the post-payment surface is the
+  billing page's request status (reference → awaiting_proof → pending_review →
+  confirmed/rejected), which covers the same user need without a redirect page.
 
 - Cron schedule is `0 6 * * *` in UTC = 08:00 SAST, matching the spec's
   "daily reminders at 08:00 SAST" (Cloudflare cron triggers run in UTC).

@@ -1,19 +1,27 @@
 // oxlint-disable react/set-state-in-effect
-import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 
+import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { AdminShell } from "@/components/admin-layout";
-import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
+interface AdminStats {
+  users?: { total?: number; admins?: number; new_30d?: number };
+  companies?: { total?: number; new_30d?: number };
+  tenders?: { total?: number; new_30d?: number };
+  documents?: { total?: number; expiring_30d?: number };
+  subscriptions?: { active?: number };
+  eft?: { pending_review?: number };
+}
+
 function AdminPage() {
-  const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useAdminGuard();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -21,8 +29,7 @@ function AdminPage() {
     try {
       const r = await fetch("/api/admin/stats");
       if (r.ok) {
-        const data = (await r.json()) as Record<string, unknown>;
-        setStats(data);
+        setStats((await r.json()) as AdminStats);
       }
     } catch {
       // ignore
@@ -32,25 +39,7 @@ function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role !== "admin" || impersonatedBy) {
-      void navigate({ to: "/app" });
-    }
-  }, [session, isPending, navigate]);
-
-  useEffect(() => {
-    if (
-      !isPending &&
-      session?.user &&
-      (session.user as unknown as { role?: string }).role === "admin"
-    ) {
+    if (!isPending && session?.user?.role === "admin") {
       void fetchStats();
     }
   }, [isPending, session, fetchStats]);
@@ -73,20 +62,12 @@ function AdminPage() {
     return <Outlet />;
   }
 
-  const usersTotal = ((stats as unknown as { users?: { total?: number } })?.users?.total ?? "—") as
-    | string
-    | number;
-  const companiesTotal = ((stats as unknown as { companies?: { total?: number } })?.companies
-    ?.total ?? "—") as string | number;
-  const eftTotal = ((stats as unknown as { eft?: { total?: number } })?.eft?.total ?? "—") as
-    | string
-    | number;
-  const tendersTotal = ((stats as unknown as { tenders?: { total?: number } })?.tenders?.total ??
-    "—") as string | number;
-  const docsTotal = ((stats as unknown as { documents?: { total?: number } })?.documents?.total ??
-    "—") as string | number;
-  const pendingEft = ((stats as unknown as { eft?: { pending_review?: number } })?.eft
-    ?.pending_review ?? null) as number | null;
+  const usersTotal = stats?.users?.total ?? 0;
+  const adminsTotal = stats?.users?.admins ?? 0;
+  const companiesTotal = stats?.companies?.total ?? 0;
+  const eftPendingReview = stats?.eft?.pending_review ?? 0;
+  const tendersTotal = stats?.tenders?.total ?? 0;
+  const docsTotal = stats?.documents?.total ?? 0;
 
   return (
     <AdminShell active="overview">
@@ -114,8 +95,8 @@ function AdminPage() {
         >
           <p className="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">Users</p>
           <p className="mt-2 text-2xl font-bold">{usersTotal}</p>
-          {pendingEft !== null && (
-            <p className="mt-1 text-xs text-zinc-400">{pendingEft} pending EFT · quick ops</p>
+          {eftPendingReview > 0 && (
+            <p className="mt-1 text-xs text-zinc-400">{eftPendingReview} pending EFT · quick ops</p>
           )}
         </div>
         <div
@@ -134,7 +115,7 @@ function AdminPage() {
           <p className="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">
             EFT Payments
           </p>
-          <p className="mt-2 text-2xl font-bold">{eftTotal}</p>
+          <p className="mt-2 text-2xl font-bold">{usersTotal}</p>
         </div>
       </div>
       {/* additional tiles to mirror old overview and provide richer test coverage */}
@@ -162,13 +143,7 @@ function AdminPage() {
           className="rounded-sm border border-zinc-800 bg-zinc-950 p-6"
         >
           <p className="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">Admins</p>
-          <p className="mt-2 text-2xl font-bold">
-            {
-              ((stats as unknown as { users?: { admins?: number } })?.users?.admins ?? "—") as
-                | string
-                | number
-            }
-          </p>
+          <p className="mt-2 text-2xl font-bold">{adminsTotal}</p>
         </div>
       </div>
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">

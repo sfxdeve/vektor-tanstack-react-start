@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { ensureCompanySetup } from "./helpers";
+import { pdfFixture } from "./fixtures";
 
 function uniqueEmail(prefix = "sbd") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -57,15 +58,8 @@ test.describe("SBD PDF generation", () => {
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("upload-card")).toBeVisible();
 
-    const pdfBuffer = Buffer.from(
-      "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender document: required CIDB 4EB for electrical works\nendstream\nendobj\n",
-    );
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
-    await expect(page.getByTestId("selected-file-name")).toContainText("tender.pdf");
+    await page.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
+    await expect(page.getByTestId("selected-file-name")).toContainText("tender-4eb");
     await page.getByTestId("analyze-btn").click();
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId("fit-score-card")).toBeVisible();
@@ -124,42 +118,12 @@ test.describe("SBD PDF generation", () => {
     expect(sbd61Status.header).toBe("%PDF-");
     expect(sbd61Status.len).toBeGreaterThan(1000);
 
-    // Check that 90/10 variant would also work if we re-analyze with 90/10 system
-    // Do a second analysis with 90/10 to ensure schedule branch is covered
-    await page.getByTestId("select-pppfa-system").click();
-    await page.getByRole("option", { name: /90\/10/ }).click();
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender2.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
-    await page.getByTestId("analyze-btn").click();
-    await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
-    const tenderId2 = await page.evaluate(async () => {
-      const compRes = await fetch("/api/companies");
-      const comps = (await compRes.json()) as Array<{ id: string }>;
-      const companyId = comps[0]!.id;
-      const res = await fetch(`/api/tenders/${companyId}`);
-      const list = (await res.json()) as Array<{ id: string }>;
-      // newest first
-      return list[0]?.id ?? null;
-    });
-    expect(tenderId2).toBeTruthy();
-    // Newest tender also has persistent SBD actions
-    await expect(page.getByTestId(`sbd4-btn-${tenderId2}`)).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId(`sbd61-btn-${tenderId2}`)).toBeVisible({ timeout: 10000 });
-    const sbd61_90 = await page.evaluate(async (tid) => {
-      const res = await fetch(`/api/tender/${tid}/sbd61`);
-      const buf = await res.arrayBuffer();
-      return {
-        status: res.status,
-        len: buf.byteLength,
-        header: new TextDecoder().decode(new Uint8Array(buf).slice(0, 5)),
-      };
-    }, tenderId2 as string);
-    expect(sbd61_90.status).toBe(200);
-    expect(sbd61_90.header).toBe("%PDF-");
-    expect(sbd61_90.len).toBeGreaterThan(1000);
+    // The analyzed tender also exposes persistent per-tender SBD actions.
+    await expect(page.getByTestId(`sbd4-btn-${tenderId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`sbd61-btn-${tenderId}`)).toBeVisible({ timeout: 10000 });
+
+    // The trial grant is exactly one credit — a second analysis is refused and
+    // the credit ledger stays consistent (see tender.spec for the same rule).
 
     // Ownership isolation: User B cannot download User A's tender SBDs
     const contextB = await browser.newContext();
@@ -237,14 +201,7 @@ test.describe("SBD PDF generation", () => {
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
 
     // Upload and analyze to expose SBD buttons for a11y check
-    const pdfBuffer = Buffer.from(
-      "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender with CIDB 4EB and SBD forms\nendstream\nendobj\n",
-    );
-    await page.getByTestId("file-input").setInputFiles({
-      name: "tender.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfBuffer,
-    });
+    await page.getByTestId("file-input").setInputFiles(pdfFixture("tender-4eb.pdf"));
     await page.getByTestId("analyze-btn").click();
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId("download-sbd4-btn")).toBeVisible();

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { getUserRole, toneClass } from "@/lib/admin";
+import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/eft")({
   component: AdminEftPage,
@@ -38,11 +38,20 @@ type EftPayment = {
   credits_granted: number | null;
 };
 
-const STATUS_META: Record<string, { label: string; tone: string }> = {
-  awaiting_proof: { label: "Awaiting proof", tone: "amber" },
-  pending_review: { label: "Pending review", tone: "teal" },
-  confirmed: { label: "Confirmed", tone: "green" },
-  rejected: { label: "Rejected", tone: "red" },
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  awaiting_proof: {
+    label: "Awaiting proof",
+    className: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  },
+  pending_review: {
+    label: "Pending review",
+    className: "border-teal-500/30 bg-teal-500/10 text-teal-300",
+  },
+  confirmed: {
+    label: "Confirmed",
+    className: "border-green-500/30 bg-green-500/10 text-green-300",
+  },
+  rejected: { label: "Rejected", className: "border-red-500/30 bg-red-500/10 text-red-300" },
 };
 
 const FILTERS = [
@@ -279,7 +288,10 @@ function AdminEftPage() {
                 )}
                 {!loading &&
                   payments.map((p) => {
-                    const meta = STATUS_META[p.status] || { label: p.status, tone: "zinc" };
+                    const meta = STATUS_META[p.status] ?? {
+                      label: p.status,
+                      className: "border-zinc-700 bg-zinc-800 text-zinc-300",
+                    };
                     return (
                       <tr
                         key={p.id}
@@ -308,7 +320,7 @@ function AdminEftPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${toneClass(meta.tone as never)}`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${meta.className}`}
                           >
                             {meta.label}
                           </span>

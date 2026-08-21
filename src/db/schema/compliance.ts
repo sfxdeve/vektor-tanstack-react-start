@@ -50,3 +50,5 @@ export const sentReminders = sqliteTable(
     uniqueIndex("sent_reminders_unique").on(t.companyId, t.documentId, t.threshold),
   ],
 );
+
+export type ComplianceDocumentRow = typeof complianceDocuments.$inferSelect;

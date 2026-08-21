@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { authClient } from "@/lib/auth/auth-client";
+import { XIcon } from "lucide-react";
+
 import {
   NEEDS_EXPIRY_TYPES,
   isBbbeeMismatch,
@@ -44,7 +46,6 @@ type VaultDoc = {
   file_name: string;
   expiry_date: string | null;
   is_compliant: boolean;
-  storage_path?: string | null;
   storage_key?: string | null;
   bargaining_council: string | null;
   extracted_bbbee_level: number | null;
@@ -56,7 +57,7 @@ const PREVIEW_TYPES = NEEDS_EXPIRY_TYPES;
 
 function DocumentsPage() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireUser();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -103,20 +104,7 @@ function DocumentsPage() {
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role === "admin" && !impersonatedBy) {
-      void navigate({ to: "/admin" });
-      return;
-    }
-  }, [session, isPending, navigate]);
+  useRequireUser();
 
   useEffect(() => {
     fetch("/api/reference/bargaining-councils")
@@ -844,13 +832,14 @@ function DocumentsPage() {
                                   className="inline-flex items-center gap-1 text-red-600 text-sm font-semibold"
                                   data-testid={`doc-status-noncompliant-${doc.id}`}
                                 >
-                                  ✕ {isExpired ? "Expired" : "Non-Compliant"}
+                                  <XIcon className="h-4 w-4" aria-hidden="true" />
+                                  {isExpired ? "Expired" : "Non-Compliant"}
                                 </span>
                               )}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                {doc.storage_path && (
+                                {doc.storage_key && (
                                   <button
                                     data-testid={`download-doc-${doc.id}`}
                                     onClick={() => void handleDownload(doc.id, doc.file_name)}

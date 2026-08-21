@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { ensureCompanySetup } from "./helpers";
+import { clearSession, ensureCompanySetup } from "./helpers";
+import { pdfFixture } from "./fixtures";
 
 function uniqueEmail(prefix = "dashhelp") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -129,18 +130,17 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("activity-empty")).toBeVisible();
 
     // seed tender + EFT to prove merging without starving any stream
-    const seeded = await page.evaluate(async () => {
+    const tenderBytes = [...pdfFixture("tender-4eb.pdf").buffer];
+    const seeded = await page.evaluate(async (bytes: number[]) => {
       const compRes = await fetch("/api/companies");
       const comps = (await compRes.json()) as Array<{ id: string }>;
       const companyId = comps[0]!.id;
-      const pdfBlob = new Blob(
-        [
-          "%PDF-1.4\n1 0 obj\n<<>>\nstream\nTender document: required CIDB 4EB for electrical works\nendstream\nendobj\n",
-        ],
-        { type: "application/pdf" },
-      );
       const fd = new FormData();
-      fd.append("file", pdfBlob, "tender.pdf");
+      fd.append(
+        "file",
+        new Blob([new Uint8Array(bytes)], { type: "application/pdf" }),
+        "tender.pdf",
+      );
       fd.append("company_id", companyId);
       const tenderR = await fetch("/api/tenders/analyze", { method: "POST", body: fd });
       const tenderBody = await tenderR.json().catch(() => null);
@@ -157,7 +157,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
         eftBody,
         companyId,
       };
-    });
+    }, tenderBytes);
     expect(seeded.tenderStatus).toBe(200);
     expect(seeded.eftStatus).toBe(201);
     await page.reload();
@@ -245,7 +245,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("privacy-cipc-link")).toBeVisible();
 
     // Help as public (no auth)
-    await page.context().clearCookies();
+    await clearSession(page);
     await page.evaluate(() => {
       try {
         localStorage.clear();

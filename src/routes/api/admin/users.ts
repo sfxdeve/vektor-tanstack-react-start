@@ -1,11 +1,11 @@
-// @ts-nocheck
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
+import { desc, like, or, sql } from "drizzle-orm";
 
 import { createDb } from "@/db";
 import { user } from "@/db/schema/auth";
 import { companies } from "@/db/schema/company";
-import { requireAdmin } from "@/lib/admin-server";
+import { requireAdmin } from "@/lib/server-auth";
 
 export const Route = createFileRoute("/api/admin/users")({
   server: {
@@ -13,73 +13,48 @@ export const Route = createFileRoute("/api/admin/users")({
       GET: async ({ request }) => {
         const adminCheck = await requireAdmin(request);
         if (adminCheck instanceof Response) return adminCheck;
+
         const url = new URL(request.url);
-        const q = (url.searchParams.get("q") || url.searchParams.get("search") || "")
-          .trim()
-          .toLowerCase();
+        const q = (url.searchParams.get("q") ?? url.searchParams.get("search") ?? "").trim();
 
-        const db = createDb(env.DB as unknown as D1Database);
-        const usersRows = await db.select().from(user);
-        const companiesRows = await db.select().from(companies);
+        const db = createDb(env.DB);
+        const rows = await db
+          .select()
+          .from(user)
+          .where(
+            q
+              ? or(
+                  like(sql`lower(${user.email})`, `%${q.toLowerCase()}%`),
+                  like(sql`lower(coalesce(${user.name}, ''))`, `%${q.toLowerCase()}%`),
+                )
+              : undefined,
+          )
+          .orderBy(desc(user.createdAt));
 
-        // company counts per user
-        const companyCountMap: Record<string, number> = {};
-        for (const c of companiesRows) {
-          const uid = (c as unknown as { userId: string }).userId;
-          companyCountMap[uid] = (companyCountMap[uid] ?? 0) + 1;
-        }
+        // company counts per user (single grouped query)
+        const counts = await db
+          .select({ userId: companies.userId, n: sql<number>`count(*)` })
+          .from(companies)
+          .groupBy(companies.userId);
+        const countByUser = new Map(counts.map((c) => [c.userId, Number(c.n)]));
 
-        let filtered = usersRows;
-        if (q) {
-          filtered = usersRows.filter((u) => {
-            const email = (u.email || "").toLowerCase();
-            const name = (u.name || "").toLowerCase();
-            const id = (u.id || "").toLowerCase();
-            return email.includes(q) || name.includes(q) || id.includes(q);
-          });
-        }
-        filtered.sort(
-          (a, b) =>
-            new Date(b.createdAt as unknown as string | Date).getTime() -
-            new Date(a.createdAt as unknown as string | Date).getTime(),
+        return Response.json(
+          rows.map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            referral_code: u.referralCode,
+            referred_by_user_id: u.referredByUserId,
+            referred_by_code: u.referredByCode,
+            email_verified: u.emailVerified,
+            banned: u.banned,
+            ban_reason: u.banReason,
+            created_at: new Date(u.createdAt).toISOString(),
+            updated_at: new Date(u.updatedAt).toISOString(),
+            company_count: countByUser.get(u.id) ?? 0,
+          })),
         );
-
-        // enrich with compliance summary if needed for search detail later — keep lightweight
-        const result = filtered.map((u) => {
-          const {
-            id,
-            name,
-            email,
-            role,
-            referralCode,
-            referredByUserId,
-            referredByCode,
-            createdAt,
-            updatedAt,
-            emailVerified,
-            banned,
-            banReason,
-          } = u as unknown as Record<string, unknown>;
-          return {
-            id,
-            name,
-            email,
-            role,
-            referral_code: referralCode,
-            referred_by_user_id: referredByUserId,
-            referred_by_code: referredByCode,
-            email_verified: emailVerified,
-            banned,
-            ban_reason: banReason,
-            created_at: createdAt ? new Date(createdAt as string | Date).toISOString() : null,
-            updated_at: updatedAt ? new Date(updatedAt as string | Date).toISOString() : null,
-            company_count: companyCountMap[u.id as string] ?? 0,
-          };
-        });
-
-        return new Response(JSON.stringify(result), {
-          headers: { "content-type": "application/json" },
-        });
       },
     },
   },

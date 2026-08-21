@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/setup")({
   component: SetupPage,
@@ -260,7 +260,7 @@ function BargainingCouncilMultiSelect({
 
 function SetupPage() {
   const navigate = useNavigate();
-  const { data: session, isPending } = authClient.useSession();
+  const { session, isPending } = useRequireUser();
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Array<Record<string, unknown>>>([]);
   const [formData, setFormData] = useState({
@@ -293,20 +293,7 @@ function SetupPage() {
   const selectedCompany = companies[0] as Record<string, unknown> | undefined;
   const isEditing = Boolean(selectedCompany?.id);
 
-  useEffect(() => {
-    if (isPending) return;
-    if (!session?.user) {
-      void navigate({ to: "/login" });
-      return;
-    }
-    const role = (session.user as unknown as { role?: string }).role;
-    const impersonatedBy = (session.session as unknown as { impersonatedBy?: string })
-      ?.impersonatedBy;
-    if (role === "admin" && !impersonatedBy) {
-      void navigate({ to: "/admin" });
-      return;
-    }
-  }, [session, isPending, navigate]);
+  useRequireUser();
 
   // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {

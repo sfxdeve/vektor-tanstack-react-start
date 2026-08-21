@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { GiftIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -36,10 +37,6 @@ function SignupPage() {
 
   useEffect(() => {
     if (!refCode) return;
-    // Persist ref code for attribution retry if signup aborts mid-flight
-    try {
-      localStorage.setItem("vektor_ref_code", refCode);
-    } catch {}
     // Attempt lookup but never block signup if it fails or code is invalid
     fetch(`/api/referrals/lookup?code=${encodeURIComponent(refCode)}`)
       .then((r) => (r.ok ? r.json() : null))
@@ -51,35 +48,6 @@ function SignupPage() {
       .catch(() => setRefPreview(null));
   }, [refCode]);
 
-  // Retry pending attribution if user lands here authenticated (e.g., after abort)
-  useEffect(() => {
-    let cancelled = false;
-    void authClient.getSession().then((res) => {
-      if (cancelled) return;
-      const user = (res as unknown as { data?: { user?: { id: string } } })?.data?.user;
-      if (!user) return;
-      let pending: string | null = null;
-      try {
-        pending = localStorage.getItem("vektor_ref_code");
-      } catch {}
-      if (!pending) return;
-      void fetch("/api/referrals/claim", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: pending }),
-      }).then((r) => {
-        if (r.ok) {
-          try {
-            localStorage.removeItem("vektor_ref_code");
-          } catch {}
-        }
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPasswordAcceptable(password, email)) {
@@ -88,8 +56,8 @@ function SignupPage() {
     }
     setSubmitting(true);
     try {
-      // Server-side attribution: pass referredByCode so the after-hook can create the referrals row atomically.
-      // Client-side claim is kept as best-effort fallback for older sessions.
+      // Attribution: referredByCode rides along with the signup; the auth
+      // after-hook creates the referrals audit row server-side.
       const normalizedRef = refCode ? refCode.trim().toUpperCase() : undefined;
       await authClient.signUp.email(
         {
@@ -97,7 +65,7 @@ function SignupPage() {
           password,
           name: name.trim() || (email.split("@")[0] ?? email),
           ...(normalizedRef ? { referredByCode: normalizedRef } : {}),
-        } as unknown as { email: string; password: string; name: string; referredByCode?: string },
+        },
         {
           onError: (ctx) => {
             toast.error(ctx.error.message || "Signup failed");
@@ -105,23 +73,6 @@ function SignupPage() {
           },
         },
       );
-      // Fallback: if server hook missed (e.g., hook not yet deployed), try claim endpoint.
-      if (refCode) {
-        try {
-          const claimRes = await fetch("/api/referrals/claim", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ code: refCode }),
-          });
-          if (claimRes.ok) {
-            try {
-              localStorage.removeItem("vektor_ref_code");
-            } catch {}
-          }
-        } catch {
-          // non-blocking — attribution will be retried via the mount effect
-        }
-      }
       toast.success("Account created — welcome to Vektor");
       await navigate({ to: "/app" });
     } catch (err) {
@@ -158,7 +109,7 @@ function SignupPage() {
           className="mb-6 flex items-start gap-3 rounded-sm border border-teal-500/40 bg-teal-500/10 p-4"
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-teal-500/40 bg-teal-500/20">
-            <span className="text-teal-300">🎁</span>
+            <GiftIcon className="h-4 w-4 text-teal-300" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="mb-0.5 text-xs font-bold tracking-[0.15em] text-teal-300 uppercase">

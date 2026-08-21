@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { ensureCompanySetup } from "./helpers";
+import { makePdf } from "./fixtures";
 
 function uniqueEmail(prefix = "reminder") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -99,14 +100,9 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     await page.getByRole("option", { name: /Tax Clearance Pin/ }).click();
     await page.getByTestId("input-expiry-date").fill(expiry7);
 
-    const pdfWithExpiry = Buffer.from(
-      `Valid until ${expiry7}\nThis is a Tax Clearance certificate mock.\n`,
-    );
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "tax-7days.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfWithExpiry,
-    });
+    await page
+      .getByTestId("input-file-upload")
+      .setInputFiles(await makePdf("tax-7days.pdf", [`Valid until ${expiry7}.`]));
 
     // Wait for preview hint but not required for upload
     await page.getByTestId("add-document-btn").click();
@@ -211,12 +207,9 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     // Set to Non-Compliant via select
     await page.getByTestId("select-compliance-status").click();
     await page.getByRole("option", { name: /Non-Compliant/ }).click();
-    const coidaPdf = Buffer.from(`Valid until ${daysFromNow(7)}\nCOIDA mock\n`);
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "coida-noncompliant.pdf",
-      mimeType: "application/pdf",
-      buffer: coidaPdf,
-    });
+    await page
+      .getByTestId("input-file-upload")
+      .setInputFiles(await makePdf("coida-noncompliant.pdf", [`Valid until ${daysFromNow(7)}.`]));
     await page.getByTestId("add-document-btn").click();
     await expect(page.getByText("coida-noncompliant.pdf")).toBeVisible({ timeout: 8000 });
 
@@ -247,12 +240,9 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     await page.getByTestId("select-doc-type").click();
     await page.getByRole("option", { name: /B-BBEE/ }).click();
     await page.getByTestId("input-expiry-date").fill(expiry0);
-    const pdf = Buffer.from(`Valid until ${expiry0}\nB-BBEE Level 1 mock\n`);
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "bbbee-expired.pdf",
-      mimeType: "application/pdf",
-      buffer: pdf,
-    });
+    await page
+      .getByTestId("input-file-upload")
+      .setInputFiles(await makePdf("bbbee-expired.pdf", [`Valid until ${expiry0}.`]));
     await page.getByTestId("add-document-btn").click();
     await expect(page.getByText("bbbee-expired.pdf")).toBeVisible({ timeout: 8000 });
 

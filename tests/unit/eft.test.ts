@@ -52,15 +52,6 @@ describe("eft — status machine", () => {
 });
 
 describe("eft — bank details", () => {
-  it("returns defaults when env missing (FNB fallback for dev/e2e)", () => {
-    const details = getBankDetails({});
-    expect(details.bank_name).toBe("First National Bank");
-    expect(details.account_holder).toBe("EcoBuiltConnect (Pty) Ltd");
-    expect(details.account_number).toBe("62712345678");
-    expect(details.branch_code).toBe("250655");
-    expect(details.account_type).toBe("Cheque");
-  });
-
   it("reads from env when provided", () => {
     const details = getBankDetails({
       EFT_BANK_NAME: "My Bank",

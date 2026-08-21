@@ -2,148 +2,78 @@ import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 
 import { createDb } from "@/db";
-import { companies } from "@/db/schema/company";
-import { eftPayments } from "@/db/schema/eft";
+import { eftPayments, type EftPaymentInsert } from "@/db/schema/eft";
 import { entryByLookup } from "@/lib/billing-catalog";
 import { generateReference } from "@/lib/eft";
-import { eq, toApiEftPayment } from "@/lib/eft-api";
-import { getSessionFromRequest } from "@/lib/server-auth";
+import { toApiEftPayment } from "@/lib/eft-api";
+import { fetchOwnedCompany } from "@/lib/ownership";
+import { requireUser } from "@/lib/server-auth";
+
+import { asString } from "@/lib/request-utils";
 
 export const Route = createFileRoute("/api/eft/request")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const session = await getSessionFromRequest(request);
-        if (!session?.user) {
-          return new Response(JSON.stringify({ detail: "Not authenticated" }), {
-            status: 401,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const session = await requireUser(request);
+        if (session instanceof Response) return session;
 
-        let body: Record<string, unknown>;
-        try {
-          body = (await request.json()) as Record<string, unknown>;
-        } catch {
-          return new Response(JSON.stringify({ detail: "Invalid JSON" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+        if (!body) return Response.json({ detail: "Invalid JSON" }, { status: 400 });
 
-        const lookupKey = (body.lookup_key ?? body.lookupKey ?? "") as string;
-        const companyId = (body.company_id ?? body.companyId ?? "") as string;
-
-        if (!lookupKey) {
-          return new Response(JSON.stringify({ detail: "lookup_key is required" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        if (!companyId) {
-          return new Response(JSON.stringify({ detail: "company_id is required" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
+        const lookupKey = asString(body.lookup_key ?? "");
+        const companyId = asString(body.company_id ?? "");
+        if (!lookupKey || !companyId) {
+          return Response.json(
+            { detail: "lookup_key and company_id are required" },
+            { status: 400 },
+          );
         }
 
         const entry = entryByLookup(lookupKey);
-        if (!entry) {
-          return new Response(JSON.stringify({ detail: "Unknown package" }), {
-            status: 400,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        if (!entry) return Response.json({ detail: "Unknown package" }, { status: 400 });
 
-        const db = createDb(env.DB as unknown as D1Database);
-        const companyRows = await (
-          db.select().from(companies).where as unknown as (
-            c: unknown,
-          ) => Promise<(typeof companies.$inferSelect)[]>
-        )(eq(companies.id, companyId));
-        const company = companyRows[0];
-        if (!company) {
-          return new Response(JSON.stringify({ detail: "Company not found" }), {
-            status: 404,
-            headers: { "content-type": "application/json" },
-          });
-        }
-        if (company.userId !== session.user.id) {
-          return new Response(JSON.stringify({ detail: "You don't have access to this company" }), {
-            status: 403,
-            headers: { "content-type": "application/json" },
-          });
-        }
+        const db = createDb(env.DB);
+        const company = await fetchOwnedCompany(db, companyId, session);
+        if (company instanceof Response) return company;
 
-        // Generate unique VEK-XXXXXX reference — retry on collision, fail fast if still colliding
-        let reference = generateReference();
-        for (let i = 0; i < 5; i++) {
-          const existing = await (
-            db.select().from(eftPayments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof eftPayments.$inferSelect)[]>
-          )(eq(eftPayments.reference, reference));
-          if (existing.length === 0) break;
-          reference = generateReference();
-        }
-        // Final guard: if the last generated reference still collides, surface a 500
-        // rather than letting the DB unique constraint throw an unhandled exception.
-        {
-          const collision = await (
-            db.select().from(eftPayments).where as unknown as (
-              c: unknown,
-            ) => Promise<(typeof eftPayments.$inferSelect)[]>
-          )(eq(eftPayments.reference, reference));
-          if (collision.length > 0) {
-            return new Response(
-              JSON.stringify({ detail: "Could not generate unique reference, please retry" }),
-              { status: 500, headers: { "content-type": "application/json" } },
-            );
+        // Unique reference with collision retry (unique index is the arbiter).
+        let inserted: typeof eftPayments.$inferSelect | undefined;
+        for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+          const now = new Date();
+          const row: EftPaymentInsert = {
+            id: crypto.randomUUID(),
+            reference: generateReference(),
+            userId: session.user.id,
+            userEmail: session.user.email,
+            companyId,
+            companyName: company.companyName,
+            lookupKey: entry.lookup_key,
+            packageName: entry.name,
+            amount: entry.amount_cents,
+            credits: entry.credits,
+            annualCredits: entry.annual_credits ?? null,
+            billingPeriod: entry.billing_period,
+            type: entry.type,
+            status: "awaiting_proof",
+            createdAt: now,
+            updatedAt: now,
+          };
+          try {
+            const rows = await db.insert(eftPayments).values(row).returning();
+            inserted = rows[0];
+          } catch (e) {
+            if (!(e instanceof Error && e.message.includes("UNIQUE"))) throw e;
+            // reference collision — retry with a fresh one
           }
         }
-
-        const now = new Date();
-        const id = crypto.randomUUID();
-        const row = {
-          id,
-          reference,
-          userId: session.user.id,
-          userEmail: session.user.email,
-          companyId,
-          companyName: company.companyName,
-          lookupKey,
-          packageName: entry.name,
-          amount: entry.amount_cents,
-          credits: entry.credits,
-          annualCredits: entry.annual_credits ?? null,
-          billingPeriod: entry.billing_period,
-          type: entry.type,
-          status: "awaiting_proof" as const,
-          proofPath: null,
-          proofContentType: null,
-          proofFilename: null,
-          rejectReason: null,
-          createdAt: now,
-          updatedAt: now,
-          confirmedAt: null,
-          confirmedBy: null,
-          rejectedAt: null,
-          rejectedBy: null,
-          creditsGranted: null,
-        };
-
-        await db.insert(eftPayments).values(row);
-
-        const inserted = await (
-          db.select().from(eftPayments).where as unknown as (
-            c: unknown,
-          ) => Promise<(typeof eftPayments.$inferSelect)[]>
-        )(eq(eftPayments.id, id)).then((r) => r[0]!);
-
-        return new Response(JSON.stringify(toApiEftPayment(inserted)), {
-          status: 201,
-          headers: { "content-type": "application/json" },
-        });
+        if (!inserted) {
+          return Response.json(
+            { detail: "Could not allocate a payment reference" },
+            { status: 500 },
+          );
+        }
+        return Response.json(toApiEftPayment(inserted), { status: 201 });
       },
     },
   },

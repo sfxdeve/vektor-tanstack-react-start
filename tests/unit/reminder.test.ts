@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  REMINDER_THRESHOLDS,
-  buildEmailHtml,
-  daysUntil,
-  getAppUrl,
-  getSender,
-  pickThreshold,
-  thresholdCopy,
-} from "@/lib/reminder";
+import { REMINDER_THRESHOLDS, daysUntil, pickThreshold } from "@/lib/reminder";
+import { buildEmailHtml, thresholdCopy } from "@/lib/reminder-template";
+import { getAppUrl, getSender } from "@/lib/reminder";
 
 describe("reminder — thresholds", () => {
   it("has exactly 30, 7, 0", () => {

@@ -44,7 +44,6 @@ import { Route as ApiEftBankDetailsRouteImport } from './routes/api/eft/bank-det
 import { Route as ApiEftMyRequestsRouteImport } from './routes/api/eft/my-requests'
 import { Route as ApiEftRequestRouteImport } from './routes/api/eft/request'
 import { Route as ApiReferenceBargainingCouncilsRouteImport } from './routes/api/reference/bargaining-councils'
-import { Route as ApiReferralsClaimRouteImport } from './routes/api/referrals/claim'
 import { Route as ApiReferralsLookupRouteImport } from './routes/api/referrals/lookup'
 import { Route as ApiReferralsMyRouteImport } from './routes/api/referrals/my'
 import { Route as ApiRemindersSweepRouteImport } from './routes/api/reminders/sweep'
@@ -246,11 +245,6 @@ const ApiReferenceBargainingCouncilsRoute =
     path: '/api/reference/bargaining-councils',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiReferralsClaimRoute = ApiReferralsClaimRouteImport.update({
-  id: '/api/referrals/claim',
-  path: '/api/referrals/claim',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiReferralsLookupRoute = ApiReferralsLookupRouteImport.update({
   id: '/api/referrals/lookup',
   path: '/api/referrals/lookup',
@@ -413,7 +407,6 @@ export interface FileRoutesByFullPath {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
-  '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/reminders/sweep': typeof ApiRemindersSweepRoute
@@ -474,7 +467,6 @@ export interface FileRoutesByTo {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
-  '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/reminders/sweep': typeof ApiRemindersSweepRoute
@@ -536,7 +528,6 @@ export interface FileRoutesById {
   '/api/eft/my-requests': typeof ApiEftMyRequestsRoute
   '/api/eft/request': typeof ApiEftRequestRouteWithChildren
   '/api/reference/bargaining-councils': typeof ApiReferenceBargainingCouncilsRoute
-  '/api/referrals/claim': typeof ApiReferralsClaimRoute
   '/api/referrals/lookup': typeof ApiReferralsLookupRoute
   '/api/referrals/my': typeof ApiReferralsMyRoute
   '/api/reminders/sweep': typeof ApiRemindersSweepRoute
@@ -599,7 +590,6 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
-    | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
     | '/api/reminders/sweep'
@@ -660,7 +650,6 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
-    | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
     | '/api/reminders/sweep'
@@ -721,7 +710,6 @@ export interface FileRouteTypes {
     | '/api/eft/my-requests'
     | '/api/eft/request'
     | '/api/reference/bargaining-councils'
-    | '/api/referrals/claim'
     | '/api/referrals/lookup'
     | '/api/referrals/my'
     | '/api/reminders/sweep'
@@ -780,7 +768,6 @@ export interface RootRouteChildren {
   ApiEftMyRequestsRoute: typeof ApiEftMyRequestsRoute
   ApiEftRequestRoute: typeof ApiEftRequestRouteWithChildren
   ApiReferenceBargainingCouncilsRoute: typeof ApiReferenceBargainingCouncilsRoute
-  ApiReferralsClaimRoute: typeof ApiReferralsClaimRoute
   ApiReferralsLookupRoute: typeof ApiReferralsLookupRoute
   ApiReferralsMyRoute: typeof ApiReferralsMyRoute
   ApiRemindersSweepRoute: typeof ApiRemindersSweepRoute
@@ -1048,13 +1035,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiReferenceBargainingCouncilsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/referrals/claim': {
-      id: '/api/referrals/claim'
-      path: '/api/referrals/claim'
-      fullPath: '/api/referrals/claim'
-      preLoaderRoute: typeof ApiReferralsClaimRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/referrals/lookup': {
       id: '/api/referrals/lookup'
       path: '/api/referrals/lookup'
@@ -1316,7 +1296,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEftMyRequestsRoute: ApiEftMyRequestsRoute,
   ApiEftRequestRoute: ApiEftRequestRouteWithChildren,
   ApiReferenceBargainingCouncilsRoute: ApiReferenceBargainingCouncilsRoute,
-  ApiReferralsClaimRoute: ApiReferralsClaimRoute,
   ApiReferralsLookupRoute: ApiReferralsLookupRoute,
   ApiReferralsMyRoute: ApiReferralsMyRoute,
   ApiRemindersSweepRoute: ApiRemindersSweepRoute,

@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { ensureCompanySetup } from "./helpers";
+import { pdfFixture } from "./fixtures";
 
 function uniqueEmail(prefix = "vault") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -60,15 +61,7 @@ test.describe("Compliance Document Vault", () => {
     // Typed expiry: 2026-12-31, but PDF will claim 2027-01-15 -> mismatch warning expected
     await page.getByTestId("input-expiry-date").fill("2026-12-31");
 
-    // Create a fake PDF buffer containing expiry anchor text
-    const pdfWithExpiry = Buffer.from(
-      "Valid until 2027-01-15\nThis is a Tax Clearance certificate mock.\n",
-    );
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "tax-pin.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfWithExpiry,
-    });
+    await page.getByTestId("input-file-upload").setInputFiles(pdfFixture("cert-tax-pin.pdf"));
 
     // Preview hint should appear with detected expiry and offer Use this date
     await expect(page.getByTestId("bbbee-preview-hint")).toBeVisible({ timeout: 8000 });
@@ -106,12 +99,7 @@ test.describe("Compliance Document Vault", () => {
     await page.getByRole("option", { name: /BCCEI/ }).first().click();
 
     await page.getByTestId("input-expiry-date").fill("2027-12-31");
-    const bcPdf = Buffer.from("Valid until 2027-12-31\nBCCEI Letter of Good Standing\n");
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "bccei.pdf",
-      mimeType: "application/pdf",
-      buffer: bcPdf,
-    });
+    await page.getByTestId("input-file-upload").setInputFiles(pdfFixture("cert-bccei.pdf"));
     await page.getByTestId("add-document-btn").click();
     await expect(page.getByText("bccei.pdf")).toBeVisible({ timeout: 8000 });
     // Council tag should be visible
@@ -124,12 +112,7 @@ test.describe("Compliance Document Vault", () => {
     await page.getByTestId("select-bargaining-council").click();
     await page.getByRole("option", { name: /NBCEI/ }).first().click();
     await page.getByTestId("input-expiry-date").fill("2028-01-01");
-    const nbceiPdf = Buffer.from("Valid until 2028-01-01\nNBCEI Letter\n");
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "nbcei.pdf",
-      mimeType: "application/pdf",
-      buffer: nbceiPdf,
-    });
+    await page.getByTestId("input-file-upload").setInputFiles(pdfFixture("cert-nbcei.pdf"));
     await page.getByTestId("add-document-btn").click();
     await expect(page.getByText("nbcei.pdf")).toBeVisible({ timeout: 8000 });
     // Both BCCEI and NBCEI should be present
@@ -145,12 +128,7 @@ test.describe("Compliance Document Vault", () => {
     await page.getByTestId("select-bargaining-council").click();
     await page.getByRole("option", { name: /BCCEI/ }).first().click();
     await page.getByTestId("input-expiry-date").fill("2028-06-01");
-    const bcceiV2 = Buffer.from("Valid until 2028-06-01\nBCCEI v2\n");
-    await page.getByTestId("input-file-upload").setInputFiles({
-      name: "bccei-v2.pdf",
-      mimeType: "application/pdf",
-      buffer: bcceiV2,
-    });
+    await page.getByTestId("input-file-upload").setInputFiles(pdfFixture("cert-bccei-v2.pdf"));
     await page.getByTestId("add-document-btn").click();
     await expect(page.getByText("bccei-v2.pdf")).toBeVisible({ timeout: 8000 });
     await expect(page.getByText("bccei.pdf")).toBeHidden();

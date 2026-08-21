@@ -1,9 +1,9 @@
-# Local development secrets for Cloudflare Workers / Better Auth
+# Local development secrets for Cloudflare Workers / Better Auth.
 # Copy to .dev.vars and fill in values. Never commit .dev.vars with real secrets.
 
 BETTER_AUTH_SECRET="development-secret-key-at-least-32-chars-long"
-BETTER_AUTH_URL="http://localhost:5173"
-APP_URL="http://localhost:5173"
+BETTER_AUTH_URL="http://127.0.0.1:4173"
+APP_URL="http://127.0.0.1:4173"
 
 # Captures outgoing email in the in-memory dev mailbox (/api/dev/mailbox)
 # instead of sending it. Local development and e2e only — never set this in
@@ -11,9 +11,18 @@ APP_URL="http://localhost:5173"
 DEV_MAILBOX="1"
 
 # Local/e2e only: return a deterministic tender extraction instead of calling
-# Workers AI, so the analyze journey is reproducible without wrangler login.
+# OpenAI via AI Gateway, so the analyze journey is reproducible without keys.
 # Never set this in production.
 DEV_AI_STUB="1"
+
+# EFT bank details shown on billing requests. In production these are set via
+# `wrangler secret put EFT_*`; locally they are plain vars. These demo FNB
+# details are for dev/e2e display only — no money moves over them.
+EFT_BANK_NAME="First National Bank"
+EFT_ACCOUNT_HOLDER="Vektor (Pty) Ltd"
+EFT_ACCOUNT_NUMBER="62712345678"
+EFT_BRANCH_CODE="250655"
+EFT_ACCOUNT_TYPE="Cheque"
 
 # Resend email delivery. Required in production; leave unset locally so the
 # dev mailbox above takes over.
@@ -22,13 +31,6 @@ DEV_AI_STUB="1"
 # SENDER_NAME="Vektor"
 # EMAIL_FROM="Vektor <no-reply@vektorhq.co.za>"
 
-# AI / Tender Analysis (uncomment for local AI calls)
+# AI / Tender Analysis (uncomment for real local AI calls)
 # OPENAI_API_KEY="sk-..."
 # AI_GATEWAY_ID=""
-
-# EFT bank details (required in production via `wrangler secret put`)
-# EFT_BANK_NAME="First National Bank"
-# EFT_ACCOUNT_HOLDER="Vektor (Pty) Ltd"
-# EFT_ACCOUNT_NUMBER="0000000000"
-# EFT_BRANCH_CODE="250655"
-# EFT_ACCOUNT_TYPE="Cheque"
