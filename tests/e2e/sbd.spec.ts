@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "sbd") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -17,6 +18,7 @@ test.describe("SBD PDF generation", () => {
 
     // User A signup
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("SBD User A");
     await page.getByTestId("input-email").fill(emailA);
     await page.getByTestId("input-password").fill(password);
@@ -27,8 +29,7 @@ test.describe("SBD PDF generation", () => {
     });
 
     // Create company A with all fields to test field mapping
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("SBD Co A Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(emailA);
@@ -46,9 +47,13 @@ test.describe("SBD PDF generation", () => {
     }
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Analyze tender
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("upload-card")).toBeVisible();
 
@@ -160,6 +165,7 @@ test.describe("SBD PDF generation", () => {
     const contextB = await browser.newContext();
     const pageB = await contextB.newPage();
     await pageB.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await pageB.getByTestId("input-name").fill("SBD User B");
     await pageB.getByTestId("input-email").fill(emailB);
     await pageB.getByTestId("input-password").fill(password);
@@ -168,11 +174,14 @@ test.describe("SBD PDF generation", () => {
     await expect(pageB.getByTestId("user-email")).toContainText(emailB.toLowerCase(), {
       timeout: 10000,
     });
-    await pageB.goto("/setup");
+    await ensureCompanySetup(pageB);
     await pageB.getByTestId("input-company-name").fill("SBD Co B Pty Ltd");
     await pageB.getByTestId("input-cipc-num").fill("2022/654321/07");
     await pageB.getByTestId("submit-company-btn").click();
     await expect(pageB.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(pageB.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     const forbidden4 = await pageB.evaluate(async (tid) => {
       const res = await fetch(`/api/tender/${tid}/sbd4`);
@@ -192,6 +201,7 @@ test.describe("SBD PDF generation", () => {
     const ctxAnon = await browser.newContext();
     const anonPage = await ctxAnon.newPage();
     await anonPage.goto("/");
+    await anonPage.waitForLoadState("networkidle");
     const unauth = await anonPage.evaluate(async (tid) => {
       const res = await fetch(`/api/tender/${tid}/sbd4`);
       return res.status;
@@ -204,6 +214,7 @@ test.describe("SBD PDF generation", () => {
     const email = uniqueEmail("sbd-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("SBD A11y User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -212,14 +223,17 @@ test.describe("SBD PDF generation", () => {
     await expect(page.getByTestId("user-email")).toContainText(email.toLowerCase(), {
       timeout: 10000,
     });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("SBD A11y Co Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
 
     // Upload and analyze to expose SBD buttons for a11y check
@@ -244,6 +258,7 @@ test.describe("SBD PDF generation", () => {
     const email = uniqueEmail("sbd404");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("404 User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);

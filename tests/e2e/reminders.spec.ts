@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "reminder") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -19,6 +20,7 @@ async function signupAndCreateCompany(
   password: string,
 ) {
   await page.goto("/signup");
+  await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("signup-form")).toBeVisible();
   await page.getByTestId("input-name").fill("Reminder Test User");
   await page.getByTestId("input-email").fill(email);
@@ -27,8 +29,7 @@ async function signupAndCreateCompany(
   await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
   await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
 
-  await page.goto("/setup");
-  await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+  await ensureCompanySetup(page);
   await page.getByTestId("input-company-name").fill("Reminder Test Pty Ltd");
   await page.getByTestId("input-cipc-num").fill("2021/123456/07");
   await page.getByTestId("input-contact-email").fill(email);
@@ -37,6 +38,9 @@ async function signupAndCreateCompany(
   await page.getByRole("option", { name: /Level 1/ }).click();
   await page.getByTestId("submit-company-btn").click();
   await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+  // setup auto-redirects to /app ~1.2s after save; wait it out so
+  // follow-up navigations never race the router
+  await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
   // Return companyId via API
   const cookies = await page.context().cookies();
@@ -86,6 +90,7 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
 
     // Go to documents and upload a doc with expiry 7 days from now
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
 
     const expiry7 = daysFromNow(7);
@@ -189,6 +194,7 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
 
     // Non-compliant docs should not trigger — upload a non-compliant doc with 7-day expiry
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
     // Need to get companyId again
     const companyId2 = await page.evaluate(async () => {
@@ -233,6 +239,7 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     await page.request.delete("/api/dev/mailbox");
 
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
 
     const expiry0 = daysFromNow(0);
@@ -269,6 +276,7 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     const email = uniqueEmail("rem-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y Rem User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -276,18 +284,16 @@ test.describe.serial("Reminders and Cron (Resend + sent_reminders)", () => {
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await page.waitForLoadState("networkidle").catch(() => {});
     // WebKit: signup triggers double navigation; avoid interrupting in-flight redirect
-    if (!page.url().includes("/setup")) {
-      await page.goto("/setup", { waitUntil: "commit" }).catch(() => {});
-      await page.waitForLoadState("networkidle").catch(() => {});
-    } else {
-      await page.waitForTimeout(300);
-    }
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 15000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y Rem Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);

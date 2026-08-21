@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "billing") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -15,6 +16,7 @@ test.describe("EFT Billing", () => {
 
     // Signup
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("signup-form")).toBeVisible();
     await page.getByTestId("input-name").fill("Billing E2E User");
     await page.getByTestId("input-email").fill(email);
@@ -24,8 +26,7 @@ test.describe("EFT Billing", () => {
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
 
     // Create company
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("Billing E2E Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(email);
@@ -34,9 +35,13 @@ test.describe("EFT Billing", () => {
     await page.getByRole("option", { name: /Level 1/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Go to billing
     await page.goto("/billing");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("billing-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("current-balance-card")).toBeVisible();
     // Catalog checks
@@ -76,7 +81,6 @@ test.describe("EFT Billing", () => {
 
     // Upload proof (PNG) — wait for upload-proof response
     const proofBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // minimal PNG header
-    await page.waitForTimeout(500);
     const [uploadResp] = await Promise.all([
       page.waitForResponse(
         (resp) =>
@@ -95,12 +99,11 @@ test.describe("EFT Billing", () => {
     await expect(page.getByTestId("eft-submitted-status")).toContainText("pending_review");
     // Close dialog — force due to animation instability, wait for my-requests refresh
     const myReqsPromise = page
-      .waitForResponse((resp) => resp.url().includes("/api/eft/my-requests"), { timeout: 8000 })
+      .waitForResponse((resp) => resp.url().includes("/api/eft/my-requests"), { timeout: 15000 })
       .catch(() => null);
     await page.getByTestId("eft-close-btn").click({ force: true });
     await expect(page.getByTestId("eft-payment-dialog")).toBeHidden({ timeout: 5000 });
     await myReqsPromise;
-    await page.waitForTimeout(500);
 
     // My requests list should now show pending_review
     await expect(page.getByTestId("my-eft-payments-section")).toBeVisible({ timeout: 8000 });
@@ -214,19 +217,23 @@ test.describe("EFT Billing", () => {
     const email = uniqueEmail("billing-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y Billing User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
     await page.goto("/billing");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("billing-title")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
@@ -236,6 +243,7 @@ test.describe("EFT Billing", () => {
     page,
   }) => {
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
     // public catalog check via API without auth
     const catalogRes = await page.request.get("/api/billing/packages");
     expect(catalogRes.ok()).toBe(true);

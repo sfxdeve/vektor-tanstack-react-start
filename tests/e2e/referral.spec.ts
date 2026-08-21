@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "ref") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -16,6 +17,7 @@ test.describe("Referrals", () => {
 
     // --- Referrer signup ---
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("signup-form")).toBeVisible();
     await page.getByTestId("input-name").fill("Referrer One");
     await page.getByTestId("input-email").fill(referrerEmail);
@@ -25,8 +27,7 @@ test.describe("Referrals", () => {
     await expect(page.getByTestId("user-email")).toContainText(referrerEmail, { timeout: 10000 });
 
     // Create company for referrer (required for reward to land)
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("Referrer Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(referrerEmail);
@@ -35,6 +36,9 @@ test.describe("Referrals", () => {
     await page.getByRole("option", { name: /Level 1/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Fetch referrer code
     const referrerStats = await page.evaluate(async () => {
@@ -103,8 +107,7 @@ test.describe("Referrals", () => {
     expect(selfClaim.attributed).toBe(false);
 
     // Create company for referee
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("Referee Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2022/654321/07");
     await page.getByTestId("input-contact-email").fill(refereeEmail);
@@ -113,9 +116,13 @@ test.describe("Referrals", () => {
     await page.getByRole("option", { name: /Level 2/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // --- Referee requests EFT for Pro subscription (should trigger reward) ---
     await page.goto("/billing");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("billing-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("package-tc_pro_monthly_v2")).toBeVisible();
     await page.getByTestId("subscribe-tc_pro_monthly_v2").click();
@@ -194,24 +201,14 @@ test.describe("Referrals", () => {
 
     // Login as referrer (now admin)
     await page.goto("/login");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("login-form")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("input-email").fill(referrerEmail);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-login").click();
-    const browserName = page.context().browser()?.browserType().name();
-    if (browserName === "webkit") {
-      await page.waitForTimeout(1000);
-      if (page.url().includes("/login")) {
-        const resp = await page.request.post("/api/auth/sign-in/email", {
-          data: { email: referrerEmail, password },
-        });
-        if (resp.ok()) await page.goto("/admin");
-      }
-    }
     await expect(page).toHaveURL(/\/admin|\/app/, { timeout: 20000 });
     // Admin should be redirected to /admin
     await expect(page).toHaveURL(/\/admin/, { timeout: 15000 });
-    await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
 
     // Admin confirm the referee's Pro EFT (should grant 5 credits and trigger referral reward)
     const confirmRes = await page.evaluate(async (pid: string) => {
@@ -305,19 +302,23 @@ test.describe("Referrals", () => {
     const email = uniqueEmail("ref-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y Referral User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
     await page.goto("/billing");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("billing-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("referral-widget")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();

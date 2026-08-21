@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "dashhelp") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -12,6 +13,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
   }) => {
     // unauthenticated landing
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("landing-hero")).toBeVisible();
     await expect(page.getByTestId("landing-nav")).toBeVisible();
     // header should be solid bg-zinc-950 (not transparent)
@@ -23,6 +25,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     const email = uniqueEmail("redir");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("signup-form")).toBeVisible();
     await page.getByTestId("input-name").fill("Redirect User");
     await page.getByTestId("input-email").fill(email);
@@ -33,6 +36,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
 
     // now going to / should redirect to /app (user)
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
     await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 10000 });
   });
@@ -43,6 +47,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     const email = uniqueEmail("dash");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("Dash User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -51,8 +56,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
 
     // create company
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("Dash Test Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(email);
@@ -61,9 +65,13 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await page.getByRole("option", { name: /Level 2/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // go to dashboard
     await page.goto("/app");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 10000 });
     // solid header
     const header = page.locator('[class*="bg-white"][class*="border-b"]').first();
@@ -154,8 +162,6 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     expect(seeded.eftStatus).toBe(201);
     await page.reload();
     await expect(page.getByTestId("recent-activity-panel")).toBeVisible({ timeout: 10000 });
-    await page.getByTestId("activity-tab-all").click();
-    await page.waitForTimeout(800);
     // unfiltered should contain both tender and eft (proves no starving)
     const allItems = await page.evaluate(async () => {
       const r = await fetch("/api/dashboard/activity");
@@ -211,6 +217,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     page,
   }) => {
     await page.goto("/about");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("about-page")).toBeVisible();
     await expect(page.getByTestId("about-header")).toBeVisible();
     // solid header
@@ -223,6 +230,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page).toHaveTitle(/Vektor/);
 
     await page.goto("/terms");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("terms-page")).toBeVisible();
     await expect(page.getByTestId("terms-header")).toBeVisible();
     await expect(page.getByTestId("terms-cidb-link")).toBeVisible();
@@ -230,6 +238,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("terms-sars-link")).toBeVisible();
 
     await page.goto("/privacy");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("privacy-page")).toBeVisible();
     await expect(page.getByTestId("privacy-header")).toBeVisible();
     await expect(page.getByTestId("privacy-cidb-link")).toBeVisible();
@@ -244,6 +253,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
       } catch {}
     });
     await page.goto("/help");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("help-walkthrough-section")).toBeVisible();
     await expect(page.getByTestId("walkthrough-slides-grid")).toBeVisible();
     // 10 slides
@@ -271,6 +281,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     const email = uniqueEmail("helpAuthed");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("Help Authed");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -279,6 +290,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
 
     await page.goto("/help");
+    await page.waitForLoadState("networkidle");
     // should show sidebar when authed
     await expect(page.getByTestId("sidebar")).toBeVisible();
     await expect(page.getByTestId("help-header-authed")).toBeVisible();
@@ -293,6 +305,7 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     page,
   }) => {
     await page.goto("/about");
+    await page.waitForLoadState("networkidle");
     // left-aligned: check header is solid white
     const aboutHeaderClass = await page.getByTestId("about-header").getAttribute("class");
     expect(aboutHeaderClass).toContain("bg-white");
@@ -300,26 +313,43 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     await expect(page.getByTestId("about-page")).toBeVisible();
 
     await page.goto("/help");
+    await page.waitForLoadState("networkidle");
     const helpHeaderPublic = page.getByTestId("help-header");
     if (await helpHeaderPublic.isVisible()) {
       expect(await helpHeaderPublic.getAttribute("class")).toContain("bg-white");
     }
 
     await page.goto("/terms");
+    await page.waitForLoadState("networkidle");
     expect(await page.getByTestId("terms-header").getAttribute("class")).toContain("bg-white");
 
     await page.goto("/privacy");
+    await page.waitForLoadState("networkidle");
     expect(await page.getByTestId("privacy-header").getAttribute("class")).toContain("bg-white");
 
-    // sonner bottom-right check via Toaster in root - presence of sonner element after toast
+    // sonner bottom-right: trigger a real toast (failed login) and assert the
+    // toast mounts visibly in the bottom-right region. Note: the ol[data-sonner-toaster]
+    // wrapper is fixed-position with zero height, so visibility is asserted on the
+    // toast item itself; position attributes live on the wrapper.
     await page.goto("/login");
-    // trigger a toast by submitting empty? Just check Toaster exists in DOM via sonner container
-    // Sonner renders with data-sonner-toaster attribute
-    await page.evaluate(() => {
-      // @ts-ignore
-      window.dispatchEvent(new CustomEvent("test"));
-    });
-    // No failure needed; just ensure root has Toaster position bottom-right defined in code - we already verified
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByTestId("login-form")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("input-email").fill("sonner.probe@example.com");
+    await page.getByTestId("input-password").fill("definitely-not-the-password");
+    await page.getByTestId("submit-login").click();
+    const toaster = page.locator("[data-sonner-toaster]");
+    const toast = toaster.locator("[data-sonner-toast]").first();
+    await expect(toast).toBeVisible({ timeout: 10000 });
+    await expect(toaster).toHaveAttribute("data-y-position", "bottom");
+    await expect(toaster).toHaveAttribute("data-x-position", "right");
+    // Geometric check: the toast really renders in the lower-right region
+    const box = await toast.boundingBox();
+    const vp = page.viewportSize();
+    expect(box).not.toBeNull();
+    if (box && vp) {
+      expect(box.y + box.height).toBeGreaterThan(vp.height * 0.5);
+      expect(box.x + box.width).toBeGreaterThan(vp.width * 0.5);
+    }
   });
 
   test("dashboard, help, about, terms, privacy have no accessibility violations", async ({
@@ -328,18 +358,21 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     const email = uniqueEmail("a11yDash");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y Dash");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     const pages: Array<{ path: string; readyTestId: string }> = [
       { path: "/app", readyTestId: "dashboard-title" },

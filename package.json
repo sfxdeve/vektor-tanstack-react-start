@@ -7,12 +7,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "nub run build && wrangler deploy",
+    "preflight": "node scripts/ensure-dev-vars.mjs",
     "deploy:preview": "nub run build && wrangler versions upload",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "check": "nub run typecheck && nub run lint && nub run format:check && nub run test:unit && nub run test:e2e && nub run build",
+    "check": "nub run typecheck && nub run lint && nub run format:check && nub run test:unit && nub run preflight && nub run test:e2e && nub run build",
     "clean": "rm -rf .output .tanstack .wrangler coverage dist node_modules/.vite playwright-report test-results",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
@@ -20,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "test": "nub run test:unit && nub run test:e2e",
     "test:unit": "vitest run",
-    "test:e2e": "nub run build && nubx playwright test"
+    "test:e2e": "nub run preflight && nub run build && nubx playwright test"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -114,7 +114,7 @@ export function Sidebar() {
                 key={item.to}
                 to={item.to}
                 data-testid={item.testId}
-                className={`mb-1 flex w-full items-center gap-3 rounded-sm px-4 py-3 text-sm transition-colors ${isActive ? "bg-teal-600 font-semibold text-white shadow-[inset_3px_0_0_0_theme(colors.teal.300)]" : "text-zinc-300 hover:bg-zinc-800 hover:text-white"}`}
+                className={`mb-1 flex w-full items-center gap-3 rounded-sm px-4 py-3 text-sm transition-colors ${isActive ? "bg-teal-500 font-semibold text-zinc-950 shadow-[inset_3px_0_0_0_theme(colors.teal.300)]" : "text-zinc-300 hover:bg-zinc-800 hover:text-white"}`}
               >
                 <span className="text-sm">{item.label}</span>
               </Link>
@@ -126,7 +126,7 @@ export function Sidebar() {
           <div className="border-t border-zinc-800 p-4" data-testid="user-info">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="mb-1 text-xs tracking-[0.15em] text-zinc-500 uppercase">
+                <p className="mb-1 text-xs tracking-[0.15em] text-zinc-400 uppercase">
                   Signed in as
                 </p>
                 <p className="truncate text-xs font-semibold" data-testid="user-email">

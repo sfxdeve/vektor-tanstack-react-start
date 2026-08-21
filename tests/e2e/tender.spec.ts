@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "tender") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -16,6 +17,7 @@ test.describe("Tender Analysis Core", () => {
 
     // Sign up User A
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("Tender User A");
     await page.getByTestId("input-email").fill(emailA);
     await page.getByTestId("input-password").fill(password);
@@ -26,8 +28,7 @@ test.describe("Tender Analysis Core", () => {
     });
 
     // Create company A
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("TenderCo A Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(emailA);
@@ -36,9 +37,13 @@ test.describe("Tender Analysis Core", () => {
     await page.getByRole("option", { name: /Level 1/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Go to analyze
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("upload-card")).toBeVisible();
     await expect(page.getByTestId("select-pppfa-system")).toBeVisible();
@@ -106,6 +111,7 @@ test.describe("Tender Analysis Core", () => {
     const contextB = await page.context().browser()!.newContext();
     const pageB = await contextB.newPage();
     await pageB.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await pageB.getByTestId("input-name").fill("Tender User B");
     await pageB.getByTestId("input-email").fill(emailB);
     await pageB.getByTestId("input-password").fill(password);
@@ -115,11 +121,14 @@ test.describe("Tender Analysis Core", () => {
       timeout: 10000,
     });
 
-    await pageB.goto("/setup");
+    await ensureCompanySetup(pageB);
     await pageB.getByTestId("input-company-name").fill("TenderCo B Pty Ltd");
     await pageB.getByTestId("input-cipc-num").fill("2022/654321/07");
     await pageB.getByTestId("submit-company-btn").click();
     await expect(pageB.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(pageB.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Try to fetch User A's tender as User B — should be 403
     const status = await pageB.evaluate(async (tid) => {
@@ -144,6 +153,7 @@ test.describe("Tender Analysis Core", () => {
 
     // Verify that uploading a non-PDF fails with appropriate error
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     const badBuffer = Buffer.from("not a pdf content");
     await page.getByTestId("file-input").setInputFiles({
       name: "tender.txt",
@@ -161,6 +171,7 @@ test.describe("Tender Analysis Core", () => {
     const email = uniqueEmail("tender-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y Tender User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -169,13 +180,16 @@ test.describe("Tender Analysis Core", () => {
     await expect(page.getByTestId("user-email")).toContainText(email.toLowerCase(), {
       timeout: 10000,
     });
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y TenderCo Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("analyze-title")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
@@ -185,6 +199,7 @@ test.describe("Tender Analysis Core", () => {
     const email = uniqueEmail("tender-credit");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("Credit User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
@@ -194,15 +209,19 @@ test.describe("Tender Analysis Core", () => {
     await expect(page.getByTestId("user-email")).toContainText(email.toLowerCase(), {
       timeout: 10000,
     });
-    await page.goto("/setup");
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("CreditCo Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Check initial credits via companyCredits not exposed? We'll check via tender analyze count
     // Upload a valid PDF and check that one credit consumed (but we seeded 5, so we can do multiple)
     await page.goto("/analyze");
+    await page.waitForLoadState("networkidle");
     const pdfBuffer = Buffer.from("%PDF-1.4 fake tender 4GB");
     await page.getByTestId("file-input").setInputFiles({
       name: "tender.pdf",

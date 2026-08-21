@@ -79,7 +79,7 @@ function LoginPage() {
           <span className="ml-2">→</span>
         </Button>
       </Link>
-      <p className="mt-3 text-[11px] font-semibold tracking-[0.15em] text-zinc-500 uppercase">
+      <p className="mt-3 text-[11px] font-semibold tracking-[0.15em] text-zinc-400 uppercase">
         1 tender analysis free · no card required
       </p>
 
@@ -130,7 +130,7 @@ function LoginPage() {
             <Link
               to="/forgot-password"
               data-testid="link-forgot-password"
-              className="text-xs text-zinc-500 underline underline-offset-2 transition-colors hover:text-teal-400"
+              className="text-xs text-zinc-400 underline underline-offset-2 transition-colors hover:text-teal-400"
             >
               Forgot password?
             </Link>

@@ -15,7 +15,7 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+    <main className="flex min-h-screen overflow-hidden bg-zinc-950 text-zinc-100">
       <div className="relative hidden w-1/2 flex-col justify-between border-r border-zinc-900 p-12 lg:flex">
         <div
           aria-hidden="true"
@@ -69,7 +69,7 @@ export function AuthShell({
           </ul>
         </div>
 
-        <p className="relative text-xs text-zinc-500">
+        <p className="relative text-xs text-zinc-400">
           © {new Date().getFullYear()} Vektor · Built for South African contractors ·{" "}
           <Link
             to="/about"
@@ -103,6 +103,6 @@ export function AuthShell({
           {footer && <div className="mt-6 text-sm text-zinc-400">{footer}</div>}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

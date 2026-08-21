@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { ensureCompanySetup } from "./helpers";
 
 function uniqueEmail(prefix = "vault") {
   const rand = Math.random().toString(36).slice(2, 8);
@@ -13,6 +14,7 @@ test.describe("Compliance Document Vault", () => {
 
     // Signup via UI
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("signup-form")).toBeVisible();
     await page.getByTestId("input-name").fill("Test Vault User");
     await page.getByTestId("input-email").fill(email);
@@ -24,8 +26,7 @@ test.describe("Compliance Document Vault", () => {
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
 
     // Create company via setup
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("Vault Test Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2021/123456/07");
     await page.getByTestId("input-contact-email").fill(email);
@@ -36,9 +37,13 @@ test.describe("Compliance Document Vault", () => {
     await page.getByRole("option", { name: /Level 1/ }).click();
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
 
     // Go to documents vault
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("add-document-card")).toBeVisible();
     await expect(page.getByTestId("documents-list-card")).toBeVisible();
@@ -175,20 +180,23 @@ test.describe("Compliance Document Vault", () => {
     const email = uniqueEmail("vault-a11y");
     const password = "correct-horse-battery-staple-123";
     await page.goto("/signup");
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("input-name").fill("A11y User");
     await page.getByTestId("input-email").fill(email);
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
     await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
-    await page.waitForTimeout(500);
-    await page.goto("/setup");
-    await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
+    await ensureCompanySetup(page);
     await page.getByTestId("input-company-name").fill("A11y Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/123456/07");
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
+    // setup auto-redirects to /app ~1.2s after save; wait it out so
+    // follow-up navigations never race the router
+    await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 15000 });
     await page.goto("/documents");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByTestId("vault-title")).toBeVisible({ timeout: 10000 });
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);

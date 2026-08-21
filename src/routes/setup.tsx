@@ -449,7 +449,7 @@ function SetupPage() {
     <div className="flex min-h-screen flex-col lg:flex-row lg:h-screen">
       <ImpersonationBanner />
       <Sidebar />
-      <div className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto">
         <div className="border-b border-zinc-200 bg-white px-4 py-5 sm:px-8 sm:py-6">
           <Button
             data-testid="back-btn"
@@ -598,7 +598,11 @@ function SetupPage() {
                     onValueChange={(value) => handleChange("bbbee_level", value)}
                     value={formData.bbbee_level}
                   >
-                    <SelectTrigger data-testid="select-bbbee-level" className="mt-2 rounded-sm">
+                    <SelectTrigger
+                      data-testid="select-bbbee-level"
+                      aria-label="B-BBEE Level"
+                      className="mt-2 rounded-sm"
+                    >
                       <SelectValue placeholder="Select B-BBEE Level" />
                     </SelectTrigger>
                     <SelectContent>
@@ -622,7 +626,11 @@ function SetupPage() {
                     onValueChange={(value) => handleChange("preferred_pppfa_system", value)}
                     value={formData.preferred_pppfa_system}
                   >
-                    <SelectTrigger data-testid="select-preferred-pppfa" className="mt-2 rounded-sm">
+                    <SelectTrigger
+                      data-testid="select-preferred-pppfa"
+                      aria-label="Default PPPFA Preference System"
+                      className="mt-2 rounded-sm"
+                    >
                       <SelectValue placeholder="Select preference system" />
                     </SelectTrigger>
                     <SelectContent>
@@ -658,7 +666,7 @@ function SetupPage() {
                   data-testid="authorised-signatory-section"
                 >
                   <div className="md:col-span-2 -mb-1">
-                    <h3 className="text-base font-bold">Authorised Signatory</h3>
+                    <h2 className="text-base font-bold">Authorised Signatory</h2>
                     <p className="mt-1 text-xs text-zinc-600">
                       Auto-populated onto the Name and Position lines of every SBD form you
                       download. Leave blank to sign by hand.
@@ -710,7 +718,7 @@ function SetupPage() {
                         <span className="text-white">🔔</span>
                       </div>
                       <div>
-                        <h3 className="text-base font-bold">Compliance Guardian</h3>
+                        <h2 className="text-base font-bold">Compliance Guardian</h2>
                         <p className="mt-1 max-w-md text-xs text-zinc-600">
                           Get an email 30 days, 7 days and on the day a compliance document expires
                           — even when you&apos;re not logged in.
@@ -793,7 +801,7 @@ function SetupPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

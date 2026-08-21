@@ -237,7 +237,7 @@ function SignupPage() {
             className="mt-2 rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
             placeholder="A memorable phrase works best"
           />
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-400">
             At least 10 characters. A 4-word phrase beats a short scrambled password.
           </p>
         </div>

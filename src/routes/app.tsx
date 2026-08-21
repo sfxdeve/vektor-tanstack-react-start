@@ -160,7 +160,7 @@ function EftRow({ item, onOpen }: { item: EftActivity; onOpen: () => void }) {
     <ActivityRowShell
       testId={`activity-item-eft-${item.id}`}
       icon={
-        <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-teal-600 text-[11px] font-bold text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-teal-700 text-[11px] font-bold text-white">
           R
         </span>
       }
