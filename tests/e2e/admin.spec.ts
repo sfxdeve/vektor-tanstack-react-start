@@ -6,7 +6,13 @@ function uniqueEmail(prefix = "admin") {
   return `${prefix}.${Date.now()}.${rand}@example.com`.toLowerCase();
 }
 
-async function signupViaUI(page: import("@playwright/test").Page, name: string, email: string, password: string, cipc = "2021/123456/07") {
+async function signupViaUI(
+  page: import("@playwright/test").Page,
+  name: string,
+  email: string,
+  password: string,
+  cipc = "2021/123456/07",
+) {
   await page.goto("/signup");
   await expect(page.getByTestId("signup-form")).toBeVisible();
   await page.getByTestId("input-name").fill(name);
@@ -15,8 +21,12 @@ async function signupViaUI(page: import("@playwright/test").Page, name: string, 
   await page.getByTestId("submit-signup").click();
   await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
   await expect(page.getByTestId("user-email")).toContainText(email, { timeout: 10000 });
-  // create company
-  await page.goto("/setup");
+  await page.waitForLoadState("networkidle");
+  // create company - only navigate if not already on setup
+  if (!page.url().includes("/setup")) {
+    await page.goto("/setup");
+    await page.waitForLoadState("networkidle");
+  }
   await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
   await page.getByTestId("input-company-name").fill(`${name} Pty Ltd`);
   await page.getByTestId("input-cipc-num").fill(cipc);
@@ -29,17 +39,14 @@ async function signupViaUI(page: import("@playwright/test").Page, name: string, 
 }
 
 async function promoteToAdmin(page: import("@playwright/test").Page, email: string) {
-  const res = await page.evaluate(
-    async (em: string) => {
-      const r = await fetch("/api/dev/set-role", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: em, role: "admin" }),
-      });
-      return { ok: r.ok, status: r.status, body: await r.json().catch(() => null) };
-    },
-    email,
-  );
+  const res = await page.evaluate(async (em: string) => {
+    const r = await fetch("/api/dev/set-role", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: em, role: "admin" }),
+    });
+    return { ok: r.ok, status: r.status, body: await r.json().catch(() => null) };
+  }, email);
   expect(res.ok).toBe(true);
 }
 
@@ -53,7 +60,9 @@ async function loginViaUI(page: import("@playwright/test").Page, email: string, 
 }
 
 test.describe("Admin Console (Issue 09)", () => {
-  test("admin guard: unauthenticated and non-admin cannot access admin routes", async ({ page }) => {
+  test("admin guard: unauthenticated and non-admin cannot access admin routes", async ({
+    page,
+  }) => {
     // Ensure clean session
     await page.context().clearCookies();
     await page.evaluate(() => {
@@ -64,16 +73,20 @@ test.describe("Admin Console (Issue 09)", () => {
     });
 
     // Try to access /admin directly unauthenticated -> should redirect to /login
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
     await expect(page.getByTestId("login-form")).toBeVisible({ timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/users");
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/companies");
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 
@@ -83,16 +96,20 @@ test.describe("Admin Console (Issue 09)", () => {
     await signupViaUI(page, "Guard User", email, password);
 
     // Non-admin trying to access admin should redirect to /app
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
     await expect(page.getByTestId("dashboard-title")).toBeVisible({ timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/users");
     await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/companies");
     await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     await expect(page).toHaveURL(/\/app/, { timeout: 10000 });
 
@@ -143,16 +160,19 @@ test.describe("Admin Console (Issue 09)", () => {
     await expect(page.getByTestId("admin-quick-eft")).toBeVisible();
 
     // Navigate to subpages and check nav persists dark console
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/users");
     await expect(page.getByTestId("admin-nav")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("admin-users-title")).toBeVisible();
     await expect(page.getByTestId("admin-users-search")).toBeVisible();
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/companies");
     await expect(page.getByTestId("admin-nav")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("admin-companies-title")).toBeVisible();
     await expect(page.getByTestId("admin-companies-search")).toBeVisible();
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     await expect(page.getByTestId("admin-nav")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("admin-eft-title")).toBeVisible();
@@ -160,7 +180,9 @@ test.describe("Admin Console (Issue 09)", () => {
     await expect(page.getByTestId("admin-eft-table")).toBeVisible();
   });
 
-  test("users and companies list, search, detail and delete with cascading note", async ({ page }) => {
+  test("users and companies list, search, detail and delete with cascading note", async ({
+    page,
+  }) => {
     const adminEmail = uniqueEmail("admin-list");
     const password = "correct-horse-battery-staple-123";
     await signupViaUI(page, "Admin List", adminEmail, password);
@@ -181,7 +203,11 @@ test.describe("Admin Console (Issue 09)", () => {
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
-    await page.goto("/setup");
+    await page.waitForLoadState("networkidle");
+    if (!page.url().includes("/setup")) {
+      await page.goto("/setup");
+      await page.waitForLoadState("networkidle");
+    }
     await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("input-company-name").fill("Disposable Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2020/999999/07");
@@ -200,7 +226,9 @@ test.describe("Admin Console (Issue 09)", () => {
       const cid = comps[0]!.id;
       // upload a fake doc
       const fd = new FormData();
-      const blob = new Blob(["fake doc content B-BBEE Level 2 valid until 2027-12-31"], { type: "application/pdf" });
+      const blob = new Blob(["fake doc content B-BBEE Level 2 valid until 2027-12-31"], {
+        type: "application/pdf",
+      });
       fd.append("file", blob, "bbbee.pdf");
       fd.append("doc_type", "BBBEE");
       fd.append("expiry_date", "2027-12-31");
@@ -222,6 +250,7 @@ test.describe("Admin Console (Issue 09)", () => {
     await expect(page).toHaveURL(/\/admin/, { timeout: 15000 });
 
     // Go to users list
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/users");
     await expect(page.getByTestId("admin-nav-users")).toBeVisible();
     await expect(page.getByTestId("admin-users-search")).toBeVisible({ timeout: 10000 });
@@ -251,7 +280,9 @@ test.describe("Admin Console (Issue 09)", () => {
 
     // Detail: click open
     await page.getByTestId(`admin-user-open-${disposableUserId}`).click();
-    await expect(page.getByTestId(`admin-user-detail-${disposableUserId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`admin-user-detail-${disposableUserId}`)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByTestId("admin-user-detail-companies")).toBeVisible();
     await expect(page.getByTestId("admin-user-detail-compliance")).toContainText(/docs/);
     await expect(page.getByTestId("admin-user-detail-tenders")).toBeVisible();
@@ -265,6 +296,7 @@ test.describe("Admin Console (Issue 09)", () => {
     await expect(page.getByTestId(`admin-user-detail-${disposableUserId}`)).toBeHidden();
 
     // Companies list similar
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/companies");
     await expect(page.getByTestId("admin-companies-search")).toBeVisible({ timeout: 10000 });
     await page.waitForTimeout(1500);
@@ -287,7 +319,9 @@ test.describe("Admin Console (Issue 09)", () => {
 
     // Company detail should show compliance state and tender/credit/reminder history
     await page.getByTestId(`admin-company-open-${disposableCompanyId}`).click();
-    await expect(page.getByTestId(`admin-company-detail-${disposableCompanyId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`admin-company-detail-${disposableCompanyId}`)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByTestId("admin-company-detail-docs")).toContainText("BBBEE");
     await expect(page.getByTestId("admin-company-detail-tenders")).toBeVisible();
     await expect(page.getByTestId("admin-company-detail-credits")).toBeVisible();
@@ -310,7 +344,9 @@ test.describe("Admin Console (Issue 09)", () => {
     await page.getByTestId("admin-delete-confirm").click();
     await expect(page.getByTestId("admin-delete-dialog")).toBeHidden({ timeout: 5000 });
     await page.waitForTimeout(800);
-    await expect(page.getByTestId(`admin-row-${disposableCompanyId}`)).toBeHidden({ timeout: 5000 });
+    await expect(page.getByTestId(`admin-row-${disposableCompanyId}`)).toBeHidden({
+      timeout: 5000,
+    });
 
     // Verify via API company gone
     const afterCompDelete = await page.evaluate(async (cid: string) => {
@@ -320,8 +356,11 @@ test.describe("Admin Console (Issue 09)", () => {
     expect(afterCompDelete).toBe(404);
 
     // Delete user with confirmation noting cascading deletes across all domains
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/users");
-    await expect(page.getByTestId(`admin-user-row-${disposableUserId}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`admin-user-row-${disposableUserId}`)).toBeVisible({
+      timeout: 10000,
+    });
     await page.getByTestId(`admin-user-delete-${disposableUserId}`).click();
     await expect(page.getByTestId("delete-user-dialog")).toBeVisible({ timeout: 5000 });
     // Check cascading note
@@ -345,7 +384,9 @@ test.describe("Admin Console (Issue 09)", () => {
     await page.getByTestId("delete-submit").click();
     await expect(page.getByTestId("delete-user-dialog")).toBeHidden({ timeout: 8000 });
     await page.waitForTimeout(800);
-    await expect(page.getByTestId(`admin-user-row-${disposableUserId}`)).toBeHidden({ timeout: 5000 });
+    await expect(page.getByTestId(`admin-user-row-${disposableUserId}`)).toBeHidden({
+      timeout: 5000,
+    });
 
     const afterUserDelete = await page.evaluate(async (uid: string) => {
       const r = await fetch(`/api/admin/users/${uid}`);
@@ -362,7 +403,9 @@ test.describe("Admin Console (Issue 09)", () => {
     expect(usersAfter).not.toContain(disposableEmail.toLowerCase());
   });
 
-  test("EFT admin list, proof view, confirm grants credits, reject with reason and re-upload", async ({ page }) => {
+  test("EFT admin list, proof view, confirm grants credits, reject with reason and re-upload", async ({
+    page,
+  }) => {
     const adminEmail = uniqueEmail("admin-eft");
     const userEmail = uniqueEmail("user-eft");
     const password = "correct-horse-battery-staple-123";
@@ -435,12 +478,15 @@ test.describe("Admin Console (Issue 09)", () => {
     });
     await loginViaUI(page, adminEmail, password);
     await expect(page).toHaveURL(/\/admin/, { timeout: 15000 });
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     await expect(page.getByTestId("admin-eft-filters")).toBeVisible({ timeout: 10000 });
     await expect(page.getByTestId("admin-eft-table")).toBeVisible();
     await page.waitForTimeout(1500);
     // Should see pending payment row
-    await expect(page.getByTestId(`admin-eft-row-${starterPayment.id}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`admin-eft-row-${starterPayment.id}`)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByTestId(`admin-eft-view-proof-${starterPayment.id}`)).toBeVisible();
 
     // View proof
@@ -476,8 +522,12 @@ test.describe("Admin Console (Issue 09)", () => {
       return data.payments.some((p) => p.id === pid);
     }, starterPayment.id);
     expect(starterVisibleViaApi).toBe(true);
-    await expect(page.getByTestId(`admin-eft-row-${starterPayment.id}`)).toBeVisible({ timeout: 8000 }).catch(() => {});
-    await expect(page.locator(`[data-testid="admin-eft-row-${starterPayment.id}"]`)).toContainText("Confirmed");
+    await expect(page.getByTestId(`admin-eft-row-${starterPayment.id}`))
+      .toBeVisible({ timeout: 8000 })
+      .catch(() => {});
+    await expect(page.locator(`[data-testid="admin-eft-row-${starterPayment.id}"]`)).toContainText(
+      "Confirmed",
+    );
 
     // Idempotent second confirm should return 200
     const secondConfirm = await page.evaluate(async (pid: string) => {
@@ -516,7 +566,14 @@ test.describe("Admin Console (Issue 09)", () => {
     await loginViaUI(page, adminEmail, password);
     const paymentDetail = await page.evaluate(async (pid: string) => {
       const r = await fetch(`/api/eft/admin/all`);
-      const data = (await r.json()) as { payments: Array<{ id: string; status: string; credits_granted: number | null; confirmed_at: string | null }> };
+      const data = (await r.json()) as {
+        payments: Array<{
+          id: string;
+          status: string;
+          credits_granted: number | null;
+          confirmed_at: string | null;
+        }>;
+      };
       return data.payments.find((p) => p.id === pid);
     }, starterPayment.id);
     expect(paymentDetail?.status).toBe("confirmed");
@@ -561,11 +618,14 @@ test.describe("Admin Console (Issue 09)", () => {
       } catch {}
     });
     await loginViaUI(page, adminEmail, password);
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     await expect(page.getByTestId("admin-eft-filters")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("admin-eft-filter-pending").click();
     await page.waitForTimeout(800);
-    await expect(page.getByTestId(`admin-eft-row-${paygPayment.id}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId(`admin-eft-row-${paygPayment.id}`)).toBeVisible({
+      timeout: 10000,
+    });
 
     // Try reject without reason via API should 400
     const rejectNoReason = await page.evaluate(async (pid: string) => {
@@ -592,12 +652,16 @@ test.describe("Admin Console (Issue 09)", () => {
     await page.getByTestId("admin-eft-filter-rejected").click();
     await page.waitForTimeout(800);
     await expect(page.getByTestId(`admin-eft-row-${paygPayment.id}`)).toBeVisible();
-    await expect(page.locator(`[data-testid="admin-eft-row-${paygPayment.id}"]`)).toContainText("Rejected");
+    await expect(page.locator(`[data-testid="admin-eft-row-${paygPayment.id}"]`)).toContainText(
+      "Rejected",
+    );
 
     // Verify audit: status rejected and reason stored
     const rejectedPayment = await page.evaluate(async (pid: string) => {
       const r = await fetch("/api/eft/admin/all?status=rejected");
-      const data = (await r.json()) as { payments: Array<{ id: string; reject_reason: string | null; status: string }> };
+      const data = (await r.json()) as {
+        payments: Array<{ id: string; reject_reason: string | null; status: string }>;
+      };
       return data.payments.find((p) => p.id === pid);
     }, paygPayment.id);
     expect(rejectedPayment?.status).toBe("rejected");
@@ -639,6 +703,7 @@ test.describe("Admin Console (Issue 09)", () => {
     }, paygPayment.id);
     expect(finalConfirm.ok).toBe(true);
 
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/eft");
     const waitResp = page.waitForResponse(
       (resp) => resp.url().includes("/api/eft/admin/all") && resp.request().method() === "GET",
@@ -655,7 +720,9 @@ test.describe("Admin Console (Issue 09)", () => {
     }, paygPayment.id);
     expect(confirmedViaApi).toBe(true);
     // UI check best-effort
-    await expect(page.getByTestId(`admin-eft-row-${paygPayment.id}`)).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByTestId(`admin-eft-row-${paygPayment.id}`))
+      .toBeVisible({ timeout: 8000 })
+      .catch(() => {});
 
     // Check referral reward side-effect not triggered for PAYG (should be 0 credits reward for PAYG)
     // Create referral scenario: referrer admin invites new user via referral link, new user does subscription, admin confirms, check reward 3/5/10
@@ -685,7 +752,11 @@ test.describe("Admin Console (Issue 09)", () => {
     await page.getByTestId("input-password").fill(password);
     await page.getByTestId("submit-signup").click();
     await page.waitForURL(/\/app|\/setup/, { timeout: 15000 });
-    await page.goto("/setup");
+    await page.waitForLoadState("networkidle");
+    if (!page.url().includes("/setup")) {
+      await page.goto("/setup");
+      await page.waitForLoadState("networkidle");
+    }
     await expect(page.getByTestId("company-form-card")).toBeVisible({ timeout: 10000 });
     await page.getByTestId("input-company-name").fill("Reward Referee Pty Ltd");
     await page.getByTestId("input-cipc-num").fill("2022/111111/07");
@@ -751,7 +822,9 @@ test.describe("Admin Console (Issue 09)", () => {
       const r = await fetch("/api/dashboard/activity?type=referral_reward");
       return (await r.json()) as { items: Array<{ type: string; credits_granted: number }> };
     });
-    expect(activity.items.some((i) => i.type === "referral_reward" && i.credits_granted === 5)).toBe(true);
+    expect(
+      activity.items.some((i) => i.type === "referral_reward" && i.credits_granted === 5),
+    ).toBe(true);
   });
 
   test("admin consoles have no accessibility violations", async ({ page }) => {

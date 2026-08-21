@@ -20,7 +20,9 @@ export const Route = createFileRoute("/api/eft/admin/all")({
         let rows: (typeof eftPayments.$inferSelect)[];
         if (statusFilter) {
           rows = await (
-            db.select().from(eftPayments).where as unknown as (c: unknown) => Promise<(typeof eftPayments.$inferSelect)[]>
+            db.select().from(eftPayments).where as unknown as (
+              c: unknown,
+            ) => Promise<(typeof eftPayments.$inferSelect)[]>
           )(eq(eftPayments.status, statusFilter));
         } else {
           rows = await db.select().from(eftPayments);

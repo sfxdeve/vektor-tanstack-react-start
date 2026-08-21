@@ -53,8 +53,6 @@ const FILTERS = [
   { key: "all", label: "All", testId: "filter-all" },
 ];
 
-
-
 function AdminEftPage() {
   const { session, isPending } = useAdminGuard();
   const [payments, setPayments] = useState<EftPayment[]>([]);
@@ -66,7 +64,6 @@ function AdminEftPage() {
   const [rejectPayment, setRejectPayment] = useState<EftPayment | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [actionInFlight, setActionInFlight] = useState(false);
-
 
   const load = useCallback(async (f: string) => {
     setLoading(true);
@@ -84,11 +81,7 @@ function AdminEftPage() {
   }, []);
 
   useEffect(() => {
-    if (
-      !isPending &&
-      session?.user &&
-      getUserRole(session as never) === "admin"
-    ) {
+    if (!isPending && session?.user && getUserRole(session as never) === "admin") {
       void load(filter);
     }
   }, [isPending, session, filter, load]);

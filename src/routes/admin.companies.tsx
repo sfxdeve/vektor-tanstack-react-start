@@ -78,11 +78,7 @@ function AdminCompaniesPage() {
   }, []);
 
   useEffect(() => {
-    if (
-      !isPending &&
-      session?.user &&
-      getUserRole(session as never) === "admin"
-    ) {
+    if (!isPending && session?.user && getUserRole(session as never) === "admin") {
       void fetchCompanies();
     }
   }, [isPending, session, fetchCompanies]);
@@ -300,7 +296,6 @@ function AdminCompaniesPage() {
                           >
                             Delete
                           </button>
-
                         </div>
                       </td>
                     </tr>

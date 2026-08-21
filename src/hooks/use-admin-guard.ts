@@ -16,7 +16,9 @@ export function useAdminGuard() {
       return;
     }
     const role = getUserRole(session as unknown as Parameters<typeof getUserRole>[0]);
-    const impersonated = isImpersonating(session as unknown as Parameters<typeof isImpersonating>[0]);
+    const impersonated = isImpersonating(
+      session as unknown as Parameters<typeof isImpersonating>[0],
+    );
     if (role !== "admin" || impersonated) {
       void navigate({ to: "/app" });
     }

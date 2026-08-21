@@ -355,7 +355,6 @@ function AdminUsersPage() {
                           >
                             Delete
                           </button>
-
                         </div>
                       </td>
                     </tr>
@@ -625,7 +624,6 @@ function AdminUsersPage() {
                   {deleteSubmitting ? "Deleting…" : "Delete user"}
                 </button>
               </div>
-
             </div>
           </div>
         )}

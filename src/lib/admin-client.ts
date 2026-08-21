@@ -10,7 +10,9 @@ export function getUserRole(session: SessionLike): UserRole | undefined {
 }
 
 export function isImpersonating(session: SessionLike): boolean {
-  return Boolean((session?.session as unknown as { impersonatedBy?: string } | undefined)?.impersonatedBy);
+  return Boolean(
+    (session?.session as unknown as { impersonatedBy?: string } | undefined)?.impersonatedBy,
+  );
 }
 
 export function isAdmin(session: SessionLike): boolean {

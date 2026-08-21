@@ -36,7 +36,10 @@ export const Route = createFileRoute("/api/admin/impersonate/$userId")({
           return new Response(body, { status: impRes.status, headers });
         } catch (_e) {
           console.error("impersonate proxy failed", _e);
-          return new Response(JSON.stringify({ detail: "Impersonation failed" }), { status: 500, headers: { "content-type": "application/json" } });
+          return new Response(JSON.stringify({ detail: "Impersonation failed" }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          });
         }
       },
     },
