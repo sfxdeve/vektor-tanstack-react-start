@@ -1,11 +1,12 @@
-// oxlint-disable react/set-state-in-effect, jsx-a11y/control-has-associated-label
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
+import { Spinner } from "@/components/ui/spinner";
+import { apiGet, apiSend, qk } from "@/lib/api-client";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -58,60 +59,48 @@ type UserDetail = {
   referral_rewards: { total: number; credits_earned: number };
 };
 
+function fetchAdminUsers(q: string): Promise<UserRow[]> {
+  const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users";
+  return apiGet<UserRow[]>(url);
+}
+
+function fetchUserDetail(userId: string): Promise<UserDetail> {
+  return apiGet<UserDetail>(`/api/admin/users/${userId}`);
+}
+
 function AdminUsersPage() {
-  const { session, isPending } = useAdminGuard();
-  const [users, setUsers] = useState<UserRow[] | null>(null);
+  const queryClient = useQueryClient();
+  const { session, isPending: guardPending } = useAdminGuard();
+  // Debounced server-side search over the capped listing window.
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
-  const fetchUsers = useCallback(async (q?: string) => {
-    setRefreshing(true);
-    try {
-      const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users";
-      const r = await fetch(url);
-      if (!r.ok) throw new Error("Failed to load users");
-      const data = (await r.json()) as UserRow[];
-      setUsers(data);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load users");
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
-    if (!isPending && session?.user && getUserRole(session as never) === "admin") {
-      void fetchUsers();
-    }
-  }, [isPending, session, fetchUsers]);
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const filtered = useMemo(() => {
-    if (!users) return null;
-    const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
-        u.email.toLowerCase().includes(q) ||
-        (u.name || "").toLowerCase().includes(q) ||
-        u.id.toLowerCase().includes(q),
-    );
-  }, [users, search]);
+  const isAdmin = session?.user?.role === "admin";
+  const usersQueryResult = useQuery({
+    queryKey: [...qk.adminUsers, search],
+    queryFn: () => fetchAdminUsers(search),
+    enabled: !guardPending && isAdmin,
+  });
+  const users = usersQueryResult.data;
+  const filtered = users ?? null;
 
   const openDetail = async (u: UserRow) => {
     setDetailLoading(true);
     setSelectedDetail(null);
     try {
-      const r = await fetch(`/api/admin/users/${u.id}`);
-      if (!r.ok) throw new Error("Failed to load detail");
-      const data = (await r.json()) as UserDetail;
-      setSelectedDetail(data);
+      setSelectedDetail(await fetchUserDetail(u.id));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load detail");
     } finally {
@@ -142,6 +131,23 @@ function AdminUsersPage() {
     }
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: ({
+      userId,
+      reason,
+      confirmEmail,
+    }: {
+      userId: string;
+      reason: string;
+      confirmEmail: string;
+    }) =>
+      apiSend<{ cascade_counts?: unknown }>("DELETE", `/api/admin/users/${userId}`, {
+        reason,
+        confirm_email: confirmEmail,
+      }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.adminUsers }),
+  });
+
   const submitDelete = async () => {
     if (!deleteTarget) return;
     if (!deleteReason.trim()) {
@@ -152,48 +158,30 @@ function AdminUsersPage() {
       toast.error("Confirmation email doesn't match target user's email");
       return;
     }
-    setDeleteSubmitting(true);
     try {
-      const r = await fetch(`/api/admin/users/${deleteTarget.id}`, {
-        method: "DELETE",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          reason: deleteReason.trim(),
-          confirm_email: deleteConfirmEmail.trim(),
-        }),
+      const body = await deleteMutation.mutateAsync({
+        userId: deleteTarget.id,
+        reason: deleteReason.trim(),
+        confirmEmail: deleteConfirmEmail.trim(),
       });
-      const body = (await r.json().catch(() => null)) as {
-        detail?: string;
-        cascade_counts?: unknown;
-      } | null;
-      if (!r.ok) {
-        toast.error(body?.detail || "Delete failed");
-        return;
-      }
       toast.success(`Deleted ${deleteTarget.email}`, {
         description: `Cascade: ${JSON.stringify(body?.cascade_counts ?? {})}`,
       });
-      setUsers((prev) => (prev ? prev.filter((x) => x.id !== deleteTarget.id) : prev));
       setDeleteTarget(null);
       setDeleteReason("");
       setDeleteConfirmEmail("");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setDeleteSubmitting(false);
     }
   };
 
-  if (isPending) {
+  if (guardPending || !session?.user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          Loading…
-        </div>
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
-  if (!session?.user) return null;
 
   return (
     <AdminShell active="users">
@@ -215,8 +203,8 @@ function AdminUsersPage() {
           </div>
           <button
             type="button"
-            onClick={() => void fetchUsers(search || undefined)}
-            disabled={refreshing}
+            onClick={() => void usersQueryResult.refetch()}
+            disabled={usersQueryResult.isFetching}
             data-testid="admin-users-refresh"
             className="inline-flex items-center gap-2 self-start rounded-sm border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
           >
@@ -242,7 +230,7 @@ function AdminUsersPage() {
               type="search"
               placeholder="Search by email, name, or id"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearchInput(e.target.value)}
               data-testid="admin-users-search"
               className="w-full rounded-sm border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none"
             />
@@ -262,14 +250,14 @@ function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {users === null && (
+                {usersQueryResult.isPending && (
                   <tr>
                     <td colSpan={5} className="px-6 py-10 text-center text-sm text-zinc-400">
                       Loading…
                     </td>
                   </tr>
                 )}
-                {users !== null && filtered && filtered.length === 0 && (
+                {users && filtered && filtered.length === 0 && (
                   <tr>
                     <td
                       colSpan={5}
@@ -603,10 +591,10 @@ function AdminUsersPage() {
                   data-testid="delete-submit"
                   // alias for admin spec expecting delete-confirm-*
                   onClick={() => void submitDelete()}
-                  disabled={deleteSubmitting}
+                  disabled={deleteMutation.isPending}
                   className="rounded-sm bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 disabled:opacity-60"
                 >
-                  {deleteSubmitting ? "Deleting…" : "Delete user"}
+                  {deleteMutation.isPending ? "Deleting…" : "Delete user"}
                 </button>
               </div>
             </div>

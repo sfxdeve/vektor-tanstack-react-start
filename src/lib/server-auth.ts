@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers";
 
+import { jsonError } from "@/lib/request-utils";
+
 import { createAuth } from "./auth/auth";
 
 /**
@@ -29,10 +31,6 @@ type AuthedSession = Exclude<AppSession, null>;
 
 export async function getSession(request: Request): Promise<AppSession> {
   return (await auth.api.getSession({ headers: request.headers })) as AppSession;
-}
-
-function jsonError(detail: string, status: number): Response {
-  return Response.json({ detail }, { status });
 }
 
 /**

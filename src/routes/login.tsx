@@ -21,34 +21,21 @@ function LoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    try {
-      const res = await authClient.signIn.email(
-        { email: email.trim(), password },
-        {
-          onError: (ctx) => {
-            toast.error(ctx.error.message || "Login failed");
-            throw new Error(ctx.error.message);
-          },
-        },
-      );
-      void res;
-      toast.success("Welcome back");
-      // role-based redirect: fetch session to check role
-      const res2 = await authClient.getSession();
-      const role = asVektorSession(res2?.data)?.user?.role;
-      if (role === "admin") {
-        await navigate({ to: "/admin" });
-      } else {
-        await navigate({ to: "/app" });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Login failed";
-      if (!msg.includes("Invalid") && !msg.includes("failed")) {
-        // already toasted in onError
-      }
-    } finally {
+    const { error } = await authClient.signIn.email({ email: email.trim(), password });
+    if (error) {
+      toast.error(error.message || "Login failed");
       setSubmitting(false);
+      return;
     }
+    toast.success("Welcome back");
+    // Role-based redirect: admins live in the console.
+    const { data } = await authClient.getSession();
+    if (asVektorSession(data)?.user?.role === "admin") {
+      await navigate({ to: "/admin" });
+    } else {
+      await navigate({ to: "/app" });
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -71,22 +58,6 @@ function LoginPage() {
       <p className="mt-3 text-[11px] font-semibold tracking-[0.15em] text-zinc-400 uppercase">
         1 tender analysis free · no card required
       </p>
-
-      <div className="my-6 flex items-center gap-3" aria-hidden="true">
-        <div className="h-px flex-1 bg-zinc-800" />
-        <span className="text-[10px] font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          Or sign in
-        </span>
-        <div className="h-px flex-1 bg-zinc-800" />
-      </div>
-
-      <div className="my-4 flex items-center gap-3" aria-hidden="true">
-        <div className="h-px flex-1 bg-zinc-800" />
-        <span className="text-[10px] font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          Or with email
-        </span>
-        <div className="h-px flex-1 bg-zinc-800" />
-      </div>
 
       <form onSubmit={onSubmit} className="space-y-4" data-testid="login-form">
         <div>

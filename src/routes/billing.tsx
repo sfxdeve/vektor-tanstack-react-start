@@ -1,12 +1,20 @@
-// oxlint-disable react/set-state-in-effect
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowLeftIcon,
+  BadgeCheckIcon,
+  CheckIcon,
+  ClockIcon,
+  StarIcon,
+  XCircleIcon,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { ReferralWidget } from "@/components/referral-widget";
 import { Sidebar } from "@/components/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -16,53 +24,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
+import { apiSend } from "@/lib/api-client";
+import type { EftPayment } from "@/lib/api-client";
+import {
+  type PackageDto,
+  companiesQuery,
+  creditsQuery,
+  myEftPaymentsQuery,
+  packagesQuery,
+} from "@/lib/queries";
+import { useRequireUser } from "@/hooks/use-require-user";
 
 export const Route = createFileRoute("/billing")({
   component: BillingPage,
 });
-
-type PackageApi = {
-  id: string;
-  lookup_key: string;
-  name: string;
-  description: string;
-  persona?: string;
-  tagline?: string;
-  amount: number;
-  amount_cents: number;
-  currency: string;
-  credits: number;
-  annual_credits: number | null;
-  type: string;
-  interval: string | null;
-  is_popular: boolean;
-  billing_period: string;
-  per_analysis: number;
-};
-
-type Company = { id: string; company_name: string; companyName?: string };
-
-type EftPayment = {
-  id: string;
-  reference: string;
-  user_id: string;
-  user_email: string;
-  company_id: string;
-  company_name: string;
-  lookup_key: string;
-  package_name: string;
-  amount: number;
-  amount_cents?: number;
-  credits: number;
-  annual_credits: number | null;
-  billing_period: string;
-  type: string;
-  status: string;
-  proof_path: string | null;
-  reject_reason: string | null;
-  created_at: string;
-  updated_at: string;
-};
 
 const TIER_COPY: Record<string, { persona: string; tagline: string; support: string }> = {
   tc_starter_monthly_v2: {
@@ -84,77 +60,43 @@ const TIER_COPY: Record<string, { persona: string; tagline: string; support: str
 
 function BillingPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, isPending } = useRequireUser();
-  const [packages, setPackages] = useState<PackageApi[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const authenticated = Boolean(session?.user);
+
+  const packagesQueryResult = useQuery(packagesQuery());
+  const packages = packagesQueryResult.data?.packages ?? [];
+  const companiesQueryResult = useQuery({ ...companiesQuery(), enabled: authenticated });
+  const companies = companiesQueryResult.data ?? [];
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [creditsMap, setCreditsMap] = useState<Record<string, number>>({});
-  const [myPayments, setMyPayments] = useState<EftPayment[]>([]);
-  const [dialogPkg, setDialogPkg] = useState<PackageApi | null>(null);
+  const [dialogPkg, setDialogPkg] = useState<PackageDto | null>(null);
   const [dialogExisting, setDialogExisting] = useState<EftPayment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
+  const companyId = selectedCompany?.id;
 
-  useRequireUser();
-
-  // Load packages (public)
+  // Auto-select the first company once loaded.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
-    fetch("/api/billing/packages")
-      .then((r) => r.json())
-      .then((d) => setPackages((d as { packages: PackageApi[] }).packages ?? []))
-      .catch(() => setPackages([]));
-  }, []);
-
-  // Load companies
-  useEffect(() => {
-    if (!session?.user) return;
-    fetch("/api/companies")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const list = Array.isArray(data) ? (data as Company[]) : [];
-        setCompanies(list);
-        if (list.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(list[0]!.id);
-        }
-      })
-      .catch(() => setCompanies([]));
-  }, [session, selectedCompanyId]);
-
-  const loadCredits = useCallback(async (companyId: string) => {
-    try {
-      const res = await fetch(`/api/billing/credits/${companyId}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as { credits: number };
-      setCreditsMap((prev) => ({ ...prev, [companyId]: data.credits ?? 0 }));
-    } catch {
-      // ignore
+    if (!selectedCompanyId && companies.length > 0) {
+      setSelectedCompanyId(companies[0]!.id);
     }
-  }, []);
+  }, [companies, selectedCompanyId]);
 
-  useEffect(() => {
-    if (selectedCompany) void loadCredits(selectedCompany.id);
-  }, [selectedCompany, loadCredits]);
+  const creditsQueryResult = useQuery({ ...creditsQuery(companyId!), enabled: Boolean(companyId) });
+  const myPaymentsQueryResult = useQuery({
+    ...myEftPaymentsQuery(),
+    enabled: authenticated,
+  });
+  const myPayments = myPaymentsQueryResult.data?.payments ?? [];
 
-  const loadMyPayments = useCallback(async () => {
-    try {
-      const r = await fetch("/api/eft/my-requests");
-      if (!r.ok) {
-        setMyPayments([]);
-        return;
-      }
-      const d = (await r.json()) as { payments: EftPayment[] };
-      setMyPayments(d.payments ?? []);
-    } catch {
-      setMyPayments([]);
-    }
-  }, []);
+  const cancelMutation = useMutation({
+    mutationFn: (paymentId: string) => apiSend<void>("DELETE", `/api/eft/request/${paymentId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myEftPaymentsQuery().queryKey }),
+  });
 
-  useEffect(() => {
-    if (session?.user) void loadMyPayments();
-  }, [session, loadMyPayments]);
-
-  const openEftDialog = (pkg: PackageApi) => {
+  const openEftDialog = (pkg: PackageDto) => {
     if (!selectedCompany) {
       toast.error("Please create a company profile first");
       return;
@@ -183,48 +125,44 @@ function BillingPage() {
         is_popular: false,
         billing_period: payment.billing_period,
         per_analysis: 0,
-      } as PackageApi);
+      } as PackageDto);
     setDialogPkg(pkg);
     setDialogExisting(payment);
     setDialogOpen(true);
   };
 
+  const refreshBillingData = () => {
+    void queryClient.invalidateQueries({ queryKey: myEftPaymentsQuery().queryKey });
+    if (companyId)
+      void queryClient.invalidateQueries({ queryKey: creditsQuery(companyId).queryKey });
+  };
+
   const closeDialog = () => {
     setDialogOpen(false);
-    // delay clearing to allow animation
+    // delay clearing to allow the close animation
     setTimeout(() => {
       setDialogPkg(null);
       setDialogExisting(null);
     }, 200);
-    void loadMyPayments();
-    if (selectedCompany) void loadCredits(selectedCompany.id);
+    refreshBillingData();
   };
 
   const handleCancel = async (payment: EftPayment) => {
     try {
-      const res = await fetch(`/api/eft/request/${payment.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { detail?: string };
-        throw new Error(data.detail || "Failed to cancel");
-      }
+      await cancelMutation.mutateAsync(payment.id);
       toast.success("Payment cancelled");
-      await loadMyPayments();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to cancel");
     }
   };
 
-  if (isPending) {
+  if (isPending || !session?.user) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-500 uppercase">
-          Loading…
-        </div>
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
-
-  if (!session?.user) return null;
 
   if (!companies.length) {
     return (
@@ -248,7 +186,7 @@ function BillingPage() {
 
   const subscriptionPkgs = packages.filter((p) => p.type === "subscription");
   const paygPkgs = packages.filter((p) => p.type === "one_time");
-  const currentCredits = selectedCompany ? (creditsMap[selectedCompany.id] ?? 0) : 0;
+  const currentCredits = creditsQueryResult.data?.credits ?? 0;
   // Show every non-confirmed payment — awaiting_proof, pending_review, rejected (spec: pending/awaiting can be listed, rejected allows re-upload)
   const activeEfts = myPayments.filter((p) => p.status !== "confirmed");
 
@@ -264,7 +202,8 @@ function BillingPage() {
             onClick={() => void navigate({ to: "/app" })}
             className="-ml-2 mb-4"
           >
-            ← Back to Dashboard
+            <ArrowLeftIcon aria-hidden="true" />
+            Back to Dashboard
           </Button>
           <h1
             className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl"
@@ -349,8 +288,7 @@ function BillingPage() {
                     key={p.id}
                     payment={p}
                     onReupload={() => reuploadForPayment(p)}
-                    onCancel={() => handleCancel(p)}
-                    onRefresh={loadMyPayments}
+                    onCancel={() => void handleCancel(p)}
                   />
                 ))}
               </div>
@@ -363,7 +301,7 @@ function BillingPage() {
             data-testid="everything-included-banner"
           >
             <div className="flex items-start gap-3">
-              <span className="text-teal-600 mt-0.5">✓</span>
+              <CheckIcon aria-hidden="true" className="text-teal-600 mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold text-sm text-zinc-900">
                   Every feature is included on every plan.
@@ -398,12 +336,17 @@ function BillingPage() {
                     className={`rounded-sm shadow-none relative ${pkg.is_popular ? "border-2 border-teal-600 shadow-md" : "border border-zinc-200"}`}
                   >
                     {pkg.is_popular && (
-                      <div
-                        data-testid={`popular-badge-${pkg.id}`}
-                        className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-[10px] uppercase tracking-[0.2em] font-bold px-3 py-1 rounded-sm"
+                      <Badge
+                        render={
+                          <div
+                            data-testid={`popular-badge-${pkg.id}`}
+                            className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-sm bg-teal-600 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white"
+                          />
+                        }
                       >
+                        <StarIcon aria-hidden="true" />
                         Most Popular
-                      </div>
+                      </Badge>
                     )}
                     <CardHeader className="border-b border-zinc-200">
                       <p className="text-xs uppercase tracking-[0.2em] text-zinc-500 mb-1">Plan</p>
@@ -417,25 +360,34 @@ function BillingPage() {
                     <CardContent className="pt-6">
                       <ul className="space-y-3 mb-6">
                         <li className="flex items-start gap-2 text-sm">
-                          <span className="text-green-600 mt-0.5">✓</span>
+                          <CheckIcon
+                            aria-hidden="true"
+                            className="text-green-600 mt-0.5 shrink-0"
+                          />
                           <span>
                             <strong>{pkg.credits}</strong> tender analyses / month
                           </span>
                         </li>
                         <li className="flex items-start gap-2 text-sm">
-                          <span className="text-teal-600 mt-0.5">✓</span>
+                          <CheckIcon aria-hidden="true" className="text-teal-600 mt-0.5 shrink-0" />
                           <span>{tier.tagline}</span>
                         </li>
                         <li className="flex items-start gap-2 text-sm">
-                          <span className="text-green-600 mt-0.5">✓</span>
+                          <CheckIcon
+                            aria-hidden="true"
+                            className="text-green-600 mt-0.5 shrink-0"
+                          />
                           <span>Full PDF audit report</span>
                         </li>
                         <li className="flex items-start gap-2 text-sm">
-                          <span className="text-green-600 mt-0.5">✓</span>
+                          <CheckIcon
+                            aria-hidden="true"
+                            className="text-green-600 mt-0.5 shrink-0"
+                          />
                           <span>{tier.support}</span>
                         </li>
                         <li className="flex items-start gap-2 text-sm">
-                          <span className="text-teal-600 mt-0.5">✓</span>
+                          <CheckIcon aria-hidden="true" className="text-teal-600 mt-0.5 shrink-0" />
                           <span>
                             <strong>Rollover</strong> — bank up to <strong>{rolloverCap}</strong>{" "}
                             unused credits
@@ -483,22 +435,22 @@ function BillingPage() {
                   <CardContent className="pt-6">
                     <ul className="space-y-3 mb-6">
                       <li className="flex items-start gap-2 text-sm">
-                        <span className="text-green-600 mt-0.5">✓</span>
+                        <CheckIcon aria-hidden="true" className="text-green-600 mt-0.5 shrink-0" />
                         <span>
                           <strong>{pkg.credits}</strong> tender analysis credit
                           {pkg.credits > 1 ? "s" : ""}
                         </span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
-                        <span className="text-teal-600 mt-0.5">✓</span>
+                        <CheckIcon aria-hidden="true" className="text-teal-600 mt-0.5 shrink-0" />
                         <span>Credit never expires — use whenever you bid</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
-                        <span className="text-green-600 mt-0.5">✓</span>
+                        <CheckIcon aria-hidden="true" className="text-green-600 mt-0.5 shrink-0" />
                         <span>Full compliance suite — vault, SBD forms, alerts</span>
                       </li>
                       <li className="flex items-start gap-2 text-sm">
-                        <span className="text-green-600 mt-0.5">✓</span>
+                        <CheckIcon aria-hidden="true" className="text-green-600 mt-0.5 shrink-0" />
                         <span>One-time payment — no recurring billing</span>
                       </li>
                     </ul>
@@ -531,10 +483,7 @@ function BillingPage() {
           pkg={dialogPkg}
           companyId={selectedCompany?.id ?? null}
           existingPayment={dialogExisting}
-          onSubmitted={async () => {
-            await loadMyPayments();
-            if (selectedCompany) await loadCredits(selectedCompany.id);
-          }}
+          onSubmitted={refreshBillingData}
         />
       )}
     </div>
@@ -549,37 +498,47 @@ function EftStatusRow({
   payment: EftPayment;
   onReupload: () => void;
   onCancel: () => void;
-  onRefresh: () => void;
 }) {
   const cfg: Record<
     string,
-    { icon: string; color: string; label: string; description: string; action: string | null }
+    {
+      icon: React.ReactNode;
+      iconColor: string;
+      color: string;
+      label: string;
+      description: string;
+      action: string | null;
+    }
   > = {
     awaiting_proof: {
-      icon: "◷",
-      color: "text-amber-700 bg-amber-50 border-amber-200",
+      icon: <ClockIcon aria-hidden="true" />,
+      iconColor: "text-amber-600",
+      color: "border-amber-200 bg-amber-50 text-amber-700",
       label: "Awaiting proof",
       description: "You started a payment but haven't uploaded proof yet.",
       action: "Upload proof",
     },
     pending_review: {
-      icon: "◷",
-      color: "text-teal-700 bg-teal-50 border-teal-200",
+      icon: <ClockIcon aria-hidden="true" />,
+      iconColor: "text-teal-600",
+      color: "border-teal-200 bg-teal-50 text-teal-700",
       label: "Verifying payment",
       description:
         "We received your proof of payment. Credits will be added within 1 business day.",
       action: null,
     },
     rejected: {
-      icon: "✕",
-      color: "text-red-700 bg-red-50 border-red-200",
+      icon: <XCircleIcon aria-hidden="true" />,
+      iconColor: "text-red-600",
+      color: "border-red-200 bg-red-50 text-red-700",
       label: "Rejected",
       description: payment.reject_reason || "Please re-upload proof of payment.",
       action: "Re-upload proof",
     },
     confirmed: {
-      icon: "✓",
-      color: "text-green-700 bg-green-50 border-green-200",
+      icon: <BadgeCheckIcon aria-hidden="true" />,
+      iconColor: "text-green-600",
+      color: "border-green-200 bg-green-50 text-green-700",
       label: "Confirmed",
       description: "Credits have been added.",
       action: null,
@@ -593,11 +552,9 @@ function EftStatusRow({
   return (
     <div
       data-testid={`eft-status-${payment.id}`}
-      className={`rounded-sm border p-4 flex items-start gap-3 ${config.color}`}
+      className={`flex items-start gap-3 rounded-sm border p-4 ${config.color}`}
     >
-      <span className="shrink-0 mt-0.5 text-lg" aria-hidden>
-        {config.icon}
-      </span>
+      <span className={`mt-0.5 shrink-0 ${config.iconColor}`}>{config.icon}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-sm">{config.label}</p>
@@ -657,7 +614,7 @@ function EftPaymentDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  pkg: PackageApi;
+  pkg: PackageDto;
   companyId: string | null;
   existingPayment: EftPayment | null;
   onSubmitted: (payment: EftPayment) => void;
@@ -890,7 +847,7 @@ function EftPaymentDialog({
         {isSubmitted && payment && (
           <div className="space-y-4" data-testid="eft-submitted">
             <div className="rounded-sm border border-teal-200 bg-teal-50 p-5 text-center">
-              <p className="text-3xl mb-2">✓</p>
+              <CheckIcon aria-hidden="true" className="mx-auto mb-2 h-8 w-8 text-teal-600" />
               <p className="text-base font-semibold text-zinc-900">Proof received</p>
               <p className="mt-1 text-sm text-zinc-700">
                 We&apos;ll verify your payment and email you at{" "}

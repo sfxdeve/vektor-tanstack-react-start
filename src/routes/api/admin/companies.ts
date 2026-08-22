@@ -10,6 +10,12 @@ import { companyCredits } from "@/db/schema/credits";
 import { tenders } from "@/db/schema/tender";
 import { requireAdmin } from "@/lib/server-auth";
 
+/**
+ * Cap on rows returned per request — mirrors the old backend's `.to_list(100)`
+ * list caps. The console is a working queue, not an export.
+ */
+const ADMIN_COMPANIES_LIMIT = 100;
+
 function serializeCompany(
   c: CompanyRow,
   owner: { email: string; name: string } | undefined,
@@ -55,7 +61,8 @@ export const Route = createFileRoute("/api/admin/companies")({
           .select({ company: companies, ownerEmail: user.email, ownerName: user.name })
           .from(companies)
           .leftJoin(user, eq(companies.userId, user.id))
-          .orderBy(desc(companies.createdAt));
+          .orderBy(desc(companies.createdAt))
+          .limit(ADMIN_COMPANIES_LIMIT);
 
         const nowMs = Date.now();
         const docsAgg = await db

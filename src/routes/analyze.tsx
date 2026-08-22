@@ -1,13 +1,26 @@
-// oxlint-disable react/set-state-in-effect, react/purity
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import {
+  AlertCircleIcon,
+  ArrowLeftIcon,
+  FileDownIcon,
+  FileTextIcon,
+  PaperclipIcon,
+  XCircleIcon,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { useRequireUser } from "@/hooks/use-require-user";
+import { GoNoGoGauge } from "@/components/gonogo-gauge";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
+import { apiForm, type ReturnableState } from "@/lib/api-client";
+import { companiesQuery, tendersQuery } from "@/lib/queries";
+import { downloadAuthenticatedFile } from "@/lib/download";
+import { useRequireUser } from "@/hooks/use-require-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -16,21 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GoNoGoGauge } from "@/components/gonogo-gauge";
+import { Spinner } from "@/components/ui/spinner";
 
 export const Route = createFileRoute("/analyze")({
   component: AnalyzePage,
 });
 
-type Company = {
-  id: string;
-  company_name: string;
-  cidb_crs_num?: string | null;
-  bbbee_level?: number | null;
-  preferred_pppfa_system?: string | null;
-};
-
-type TenderResult = {
+interface TenderResult {
   tender_id: string;
   tender_title: string;
   required_cidb: string | null;
@@ -46,72 +51,49 @@ type TenderResult = {
   >;
   verdict?: string;
   id?: string;
-};
+}
 
 function AnalyzePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, isPending } = useRequireUser();
+  const authenticated = Boolean(session?.user);
 
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const companiesQueryResult = useQuery({ ...companiesQuery(), enabled: authenticated });
+  const companies = companiesQueryResult.data ?? [];
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [preferenceSystem, setPreferenceSystem] = useState("80/20");
   const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TenderResult | null>(null);
-  const [returnableStatus, setReturnableStatus] = useState<
-    Record<string, { verified: boolean; verified_at: string | null; doc_ref: string | null }>
-  >({});
-  const [tenderList, setTenderList] = useState<
-    Array<{ id: string; title: string; fit_score: number; required_cidb_grade: string | null }>
-  >([]);
+  const [returnableStatus, setReturnableStatus] = useState<Record<string, ReturnableState>>({});
 
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
 
-  useRequireUser();
-
+  // Auto-select the first company and seed the PPPFA system from its preference.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
-    if (!session?.user) return;
-    fetch("/api/companies")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const list = Array.isArray(data) ? (data as Company[]) : [];
-        setCompanies(list);
-        if (list.length > 0 && !selectedCompanyId) {
-          const first = list[0]!;
-          setSelectedCompanyId(first.id);
-          if (first.preferred_pppfa_system) setPreferenceSystem(first.preferred_pppfa_system);
-        }
-      })
-      .catch(() => setCompanies([]));
-  }, [session, selectedCompanyId]);
+    if (companies.length === 0) return;
+    const first = companies[0]!;
+    setSelectedCompanyId((current) => current ?? first.id);
+    if (first.preferred_pppfa_system) setPreferenceSystem(first.preferred_pppfa_system);
+  }, [companies]);
 
+  // Re-seed the PPPFA default when the active company changes.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
     if (selectedCompany?.preferred_pppfa_system) {
       setPreferenceSystem(selectedCompany.preferred_pppfa_system);
     }
-  }, [selectedCompany]);
+  }, [selectedCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- re-sync on company switch only
 
-  const fetchTenders = useCallback(async (companyId: string) => {
-    try {
-      const res = await fetch(`/api/tenders/${companyId}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as Array<{
-        id: string;
-        title: string;
-        fit_score: number;
-        required_cidb_grade: string | null;
-      }>;
-      setTenderList(Array.isArray(data) ? data : []);
-    } catch {
-      setTenderList([]);
-    }
-  }, []);
+  const companyId = selectedCompany?.id;
+  const tendersQueryResult = useQuery({ ...tendersQuery(companyId!), enabled: Boolean(companyId) });
+  const tenderList = tendersQueryResult.data ?? [];
 
-  useEffect(() => {
-    if (selectedCompany) {
-      void fetchTenders(selectedCompany.id);
-    }
-  }, [selectedCompany, fetchTenders, result]);
+  const analyzeMutation = useMutation({
+    mutationFn: (form: FormData) => apiForm<TenderResult>("/api/tenders/analyze", form),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tendersQuery(companyId!).queryKey }),
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] ?? null;
@@ -123,47 +105,22 @@ function AnalyzePage() {
     setFile(selectedFile);
   };
 
-  const handleAnalyze = async () => {
-    if (!file) {
-      toast.error("Please select a PDF file");
-      return;
-    }
-    if (!selectedCompany) {
-      toast.error("Please create a company profile first");
-      return;
-    }
-    setLoading(true);
+  async function handleAnalyze() {
+    if (!file || !selectedCompany) return;
     setResult(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("company_id", selectedCompany.id);
       formData.append("preference_system", preferenceSystem);
-
-      const res = await fetch("/api/tenders/analyze", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { detail?: string };
-        if (res.status === 402) {
-          toast.error(data.detail || "Insufficient credits");
-        } else {
-          toast.error(data.detail || "Failed to analyze tender");
-        }
-        return;
-      }
-      const data = (await res.json()) as TenderResult;
+      const data = await analyzeMutation.mutateAsync(formData);
       setResult(data);
       setReturnableStatus(data.returnable_status ?? {});
       toast.success("Tender analyzed successfully!");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to analyze tender";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Failed to analyze tender");
     }
-  };
+  }
 
   const toggleReturnable = async (name: string, current: boolean) => {
     if (!result?.tender_id) return;
@@ -203,39 +160,60 @@ function AnalyzePage() {
     }
   };
 
+  const handleDownloadOriginal = async (tenderId: string) => {
+    try {
+      await downloadAuthenticatedFile(
+        `/api/tenders/download/${tenderId}`,
+        `tender-${tenderId}.pdf`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Original tender PDF not available");
+    }
+  };
+
+  const uploadReturnable = async (name: string, file: File) => {
+    if (!result?.tender_id) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("returnable_name", name);
+    try {
+      await apiForm(`/api/tender/${result.tender_id}/returnables/upload`, fd);
+      setReturnableStatus((prev) => ({
+        ...prev,
+        [name]: {
+          verified: true,
+          verified_at: new Date().toISOString(),
+          doc_ref: prev[name]?.doc_ref ?? null,
+          file_name: file.name,
+        },
+      }));
+      toast.success(`${file.name} attached to "${name}"`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to attach file");
+    }
+  };
+
   const downloadSbd = async (tenderId: string, form: "sbd4" | "sbd61") => {
     try {
-      const res = await fetch(`/api/tender/${tenderId}/${form}`);
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { detail?: string };
-        throw new Error(data.detail || "Failed to download form");
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${form.toUpperCase()}-${tenderId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      await downloadAuthenticatedFile(
+        `/api/tender/${tenderId}/${form}`,
+        `${form.toUpperCase()}-${tenderId}.pdf`,
+      );
       toast.success(`${form.toUpperCase()} downloaded`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to download form");
     }
   };
 
-  if (isPending) {
+  const loading = analyzeMutation.isPending;
+
+  if (isPending || !session?.user) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-500 uppercase">
-          Loading…
-        </div>
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
-
-  if (!session?.user) return null;
 
   if (!companies.length) {
     return (
@@ -279,7 +257,8 @@ function AnalyzePage() {
             onClick={() => void navigate({ to: "/app" })}
             className="-ml-2 mb-4"
           >
-            ← Back to Dashboard
+            <ArrowLeftIcon aria-hidden="true" />
+            Back to Dashboard
           </Button>
           <h1
             className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl"
@@ -396,7 +375,7 @@ function AnalyzePage() {
                       data-testid="file-upload-area"
                     >
                       <div className="flex flex-col items-center">
-                        <p className="text-2xl mb-2">📄</p>
+                        <FileTextIcon className="mb-2 h-8 w-8 text-zinc-400" aria-hidden="true" />
                         {file ? (
                           <p
                             className="text-sm font-semibold text-zinc-900"
@@ -555,6 +534,17 @@ function AnalyzePage() {
                       <p className="font-semibold mt-1" data-testid="tender-title-value">
                         {result.tender_title}
                       </p>
+                      {result.tender_id && (
+                        <button
+                          type="button"
+                          data-testid="download-original-pdf-btn"
+                          onClick={() => void handleDownloadOriginal(result.tender_id!)}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 underline underline-offset-2 hover:text-zinc-600"
+                        >
+                          <FileDownIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          Download original PDF
+                        </button>
+                      )}
                     </div>
                     {result.required_cidb && (
                       <div>
@@ -635,19 +625,39 @@ function AnalyzePage() {
                             className="flex items-center gap-3 p-3 rounded-sm border border-zinc-200 bg-white"
                             data-testid={`returnable-row-${name.replace(/[^a-zA-Z0-9]/g, "_")}`}
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               checked={status.verified}
-                              onChange={() => void toggleReturnable(name, status.verified)}
+                              onCheckedChange={() => void toggleReturnable(name, status.verified)}
                               data-testid={`returnable-toggle-${name.replace(/[^a-zA-Z0-9]/g, "_")}`}
                               aria-label={`Mark ${name} as ${status.verified ? "missing" : "included"}`}
-                              className="h-4 w-4 rounded-sm border-zinc-300"
                             />
                             <span
                               className={`flex-1 text-sm ${status.verified ? "font-semibold text-zinc-900" : "text-zinc-700"}`}
                             >
                               {name}
                             </span>
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 rounded-sm border border-zinc-300 px-2 py-1 text-xs font-semibold text-zinc-700 transition-colors hover:border-zinc-900 hover:bg-zinc-900 hover:text-white"
+                              title="Attach a supporting file"
+                            >
+                              <PaperclipIcon className="h-3 w-3" aria-hidden="true" />
+                              {status.file_name ? (
+                                <span className="max-w-24 truncate">{status.file_name}</span>
+                              ) : (
+                                "Attach"
+                              )}
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) void uploadReturnable(name, f);
+                                  e.target.value = "";
+                                }}
+                                data-testid={`returnable-upload-${name.replace(/[^a-zA-Z0-9]/g, "_")}`}
+                                aria-label={`Attach supporting file for ${name}`}
+                              />
+                            </label>
                             <span
                               className={`text-xs font-bold uppercase tracking-[0.08em] ${status.verified ? "text-green-700" : "text-zinc-400"}`}
                               data-testid={`returnable-status-${name.replace(/[^a-zA-Z0-9]/g, "_")}`}
@@ -691,11 +701,17 @@ function AnalyzePage() {
                               : "bg-orange-50 border border-orange-200"
                           }`}
                         >
-                          <span
-                            className={`mt-0.5 text-sm ${flag.includes("CRITICAL") ? "text-red-600" : "text-orange-600"}`}
-                          >
-                            {flag.includes("CRITICAL") ? "✕" : "⚠"}
-                          </span>
+                          {flag.includes("CRITICAL") ? (
+                            <XCircleIcon
+                              className="mt-0.5 h-4 w-4 shrink-0 text-red-600"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <AlertCircleIcon
+                              className="mt-0.5 h-4 w-4 shrink-0 text-orange-600"
+                              aria-hidden="true"
+                            />
+                          )}
                           <span
                             className={`text-sm font-medium ${flag.includes("CRITICAL") ? "text-red-900" : "text-orange-900"}`}
                           >
@@ -711,30 +727,26 @@ function AnalyzePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="sbd-downloads">
                 <Button
                   data-testid="download-sbd4-btn"
-                  onClick={() => {
-                    const tid = result.tender_id;
-                    if (tid) void downloadSbd(tid, "sbd4");
-                  }}
+                  onClick={() => void downloadSbd(result.tender_id, "sbd4")}
                   size="lg"
-                  className="bg-zinc-900 hover:bg-zinc-800 text-white justify-start px-6 h-16"
+                  className="h-16 justify-start bg-zinc-900 px-6 text-white hover:bg-zinc-800"
                 >
+                  <FileDownIcon className="!h-5 !w-5" aria-hidden="true" />
                   <span className="text-left">
-                    <div className="font-bold">Download SBD 4</div>
-                    <div className="text-xs opacity-80">Declaration of Interest</div>
+                    <span className="block font-bold">Download SBD 4</span>
+                    <span className="block text-xs opacity-80">Declaration of Interest</span>
                   </span>
                 </Button>
                 <Button
                   data-testid="download-sbd61-btn"
-                  onClick={() => {
-                    const tid = result.tender_id;
-                    if (tid) void downloadSbd(tid, "sbd61");
-                  }}
+                  onClick={() => void downloadSbd(result.tender_id, "sbd61")}
                   size="lg"
-                  className="bg-zinc-900 hover:bg-zinc-800 text-white justify-start px-6 h-16"
+                  className="h-16 justify-start bg-zinc-900 px-6 text-white hover:bg-zinc-800"
                 >
+                  <FileDownIcon className="!h-5 !w-5" aria-hidden="true" />
                   <span className="text-left">
-                    <div className="font-bold">Download SBD 6.1</div>
-                    <div className="text-xs opacity-80">Preference Points Claim</div>
+                    <span className="block font-bold">Download SBD 6.1</span>
+                    <span className="block text-xs opacity-80">Preference Points Claim</span>
                   </span>
                 </Button>
               </div>

@@ -1,42 +1,28 @@
-// oxlint-disable react/set-state-in-effect, jsx-a11y/control-has-associated-label
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
+import { apiGet, apiSend, type EftPayment } from "@/lib/api-client";
+import { qk } from "@/lib/api-client";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/eft")({
   component: AdminEftPage,
 });
-
-type EftPayment = {
-  id: string;
-  reference: string;
-  user_id: string;
-  user_email: string;
-  company_id: string;
-  company_name: string;
-  lookup_key: string;
-  package_name: string;
-  amount: number;
-  amount_cents: number;
-  credits: number;
-  annual_credits: number | null;
-  billing_period: string;
-  type: string;
-  status: string;
-  proof_path: string | null;
-  proof_content_type?: string | null;
-  proof_filename?: string | null;
-  reject_reason: string | null;
-  created_at: string;
-  updated_at: string;
-  confirmed_at: string | null;
-  rejected_at: string | null;
-  credits_granted: number | null;
-};
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
   awaiting_proof: {
@@ -62,38 +48,42 @@ const FILTERS = [
   { key: "all", label: "All", testId: "filter-all" },
 ];
 
+async function fetchAdminEft(filter: string): Promise<{ payments: EftPayment[] }> {
+  const params = filter === "all" ? "" : `?status=${encodeURIComponent(filter)}`;
+  return apiGet<{ payments: EftPayment[] }>(`/api/eft/admin/all${params}`);
+}
+
 function AdminEftPage() {
+  const queryClient = useQueryClient();
   const { session, isPending } = useAdminGuard();
-  const [payments, setPayments] = useState<EftPayment[]>([]);
-  const [loading, setLoading] = useState(false);
+  const isAdmin = session?.user?.role === "admin";
   const [filter, setFilter] = useState<string>("pending_review");
   const [proofPayment, setProofPayment] = useState<EftPayment | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
   const [proofContentType, setProofContentType] = useState<string | null>(null);
   const [rejectPayment, setRejectPayment] = useState<EftPayment | null>(null);
+  const [confirmPayment_, setConfirmPayment_] = useState<EftPayment | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [actionInFlight, setActionInFlight] = useState(false);
 
-  const load = useCallback(async (f: string) => {
-    setLoading(true);
-    try {
-      const params = f === "all" ? "" : `?status=${encodeURIComponent(f)}`;
-      const r = await fetch(`/api/eft/admin/all${params}`);
-      if (!r.ok) throw new Error("Could not load EFT payments");
-      const data = (await r.json()) as { payments: EftPayment[] };
-      setPayments(data.payments || []);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load EFT payments");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const paymentsQueryResult = useQuery({
+    queryKey: qk.adminEft(filter),
+    queryFn: () => fetchAdminEft(filter),
+    enabled: !isPending && isAdmin,
+  });
+  const payments = paymentsQueryResult.data?.payments ?? [];
 
-  useEffect(() => {
-    if (!isPending && session?.user && getUserRole(session as never) === "admin") {
-      void load(filter);
-    }
-  }, [isPending, session, filter, load]);
+  const invalidatePayments = () =>
+    void queryClient.invalidateQueries({ queryKey: ["admin", "eft"] });
+
+  const confirmMutation = useMutation({
+    mutationFn: (paymentId: string) => apiSend("POST", `/api/eft/admin/${paymentId}/confirm`),
+    onSuccess: () => invalidatePayments(),
+  });
+  const rejectMutation = useMutation({
+    mutationFn: ({ paymentId, reason }: { paymentId: string; reason: string }) =>
+      apiSend("POST", `/api/eft/admin/${paymentId}/reject`, { reason }),
+    onSuccess: () => invalidatePayments(),
+  });
 
   const stats = useMemo(() => {
     const total = payments.length;
@@ -127,28 +117,13 @@ function AdminEftPage() {
   };
 
   const confirmPayment = async (payment: EftPayment) => {
-    if (
-      !window.confirm(
-        `Confirm payment for ${payment.package_name} (${payment.reference})?\n\nThis will grant ${payment.annual_credits || payment.credits} credits and trigger referrer reward (best-effort). This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-    setActionInFlight(true);
     try {
-      const r = await fetch(`/api/eft/admin/${payment.id}/confirm`, { method: "POST" });
-      const body = (await r.json().catch(() => null)) as { detail?: string } | null;
-      if (!r.ok) {
-        toast.error(body?.detail || "Could not confirm payment");
-        return;
-      }
+      await confirmMutation.mutateAsync(payment.id);
       toast.success(`Payment ${payment.reference} confirmed — credits granted`);
+      setConfirmPayment_(null);
       closeProof();
-      await load(filter);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not confirm payment");
-    } finally {
-      setActionInFlight(false);
     }
   };
 
@@ -163,40 +138,27 @@ function AdminEftPage() {
       toast.error("Please provide a reason");
       return;
     }
-    setActionInFlight(true);
     try {
-      const r = await fetch(`/api/eft/admin/${rejectPayment.id}/reject`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason: rejectReason.trim() }),
+      await rejectMutation.mutateAsync({
+        paymentId: rejectPayment.id,
+        reason: rejectReason.trim(),
       });
-      const body = (await r.json().catch(() => null)) as { detail?: string } | null;
-      if (!r.ok) {
-        toast.error(body?.detail || "Could not reject payment");
-        return;
-      }
       toast.success(`Payment ${rejectPayment.reference} rejected`);
       setRejectPayment(null);
       setRejectReason("");
       closeProof();
-      await load(filter);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reject payment");
-    } finally {
-      setActionInFlight(false);
     }
   };
 
-  if (isPending) {
+  if (isPending || !session?.user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          Loading…
-        </div>
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
-  if (!session?.user) return null;
 
   return (
     <AdminShell active="eft">
@@ -220,8 +182,8 @@ function AdminEftPage() {
           </div>
           <button
             type="button"
-            onClick={() => void load(filter)}
-            disabled={loading}
+            onClick={() => void paymentsQueryResult.refetch()}
+            disabled={paymentsQueryResult.isFetching}
             data-testid="admin-eft-refresh"
             className="inline-flex items-center gap-2 self-start rounded-sm border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
           >
@@ -268,14 +230,14 @@ function AdminEftPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading && (
+                {paymentsQueryResult.isFetching && (
                   <tr>
                     <td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-400">
                       Loading…
                     </td>
                   </tr>
                 )}
-                {!loading && payments.length === 0 && (
+                {!paymentsQueryResult.isFetching && payments.length === 0 && (
                   <tr>
                     <td
                       colSpan={7}
@@ -286,7 +248,7 @@ function AdminEftPage() {
                     </td>
                   </tr>
                 )}
-                {!loading &&
+                {!paymentsQueryResult.isFetching &&
                   payments.map((p) => {
                     const meta = STATUS_META[p.status] ?? {
                       label: p.status,
@@ -357,8 +319,7 @@ function AdminEftPage() {
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => void confirmPayment(p)}
-                                  disabled={actionInFlight}
+                                  onClick={() => setConfirmPayment_(p)}
                                   data-testid={`admin-eft-confirm-${p.id}`}
                                   className="rounded-sm bg-teal-800 px-2.5 py-1 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-60"
                                 >
@@ -367,7 +328,7 @@ function AdminEftPage() {
                                 <button
                                   type="button"
                                   onClick={() => openReject(p)}
-                                  disabled={actionInFlight}
+                                  disabled={rejectMutation.isPending}
                                   data-testid={`admin-eft-reject-${p.id}`}
                                   className="rounded-sm border border-red-800 bg-red-950/50 px-2.5 py-1 text-xs font-semibold text-red-300 hover:bg-red-900/30 disabled:opacity-60"
                                 >
@@ -462,12 +423,11 @@ function AdminEftPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void confirmPayment(proofPayment)}
-                    disabled={actionInFlight}
+                    onClick={() => setConfirmPayment_(proofPayment)}
                     data-testid="admin-eft-proof-confirm"
                     className="rounded-sm bg-teal-800 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-60"
                   >
-                    {actionInFlight ? "Confirming…" : "Confirm & grant credits"}
+                    Confirm & grant credits
                   </button>
                 </div>
               )}
@@ -499,14 +459,14 @@ function AdminEftPage() {
                 >
                   Reason (required)
                 </label>
-                <textarea
+                <Textarea
                   id="admin-eft-reject-reason"
                   data-testid="admin-eft-reject-reason"
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="e.g., Proof does not match amount, incomplete transfer, name mismatch"
                   rows={3}
-                  className="mt-1 w-full rounded-sm border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none"
+                  className="mt-1 rounded-sm border-zinc-700 bg-zinc-950 text-white focus-visible:border-teal-500"
                 />
               </div>
               <div className="mt-6 flex items-center justify-end gap-3">
@@ -521,16 +481,50 @@ function AdminEftPage() {
                 <button
                   type="button"
                   onClick={() => void submitReject()}
-                  disabled={actionInFlight}
+                  disabled={rejectMutation.isPending}
                   data-testid="admin-eft-reject-submit"
                   className="rounded-sm bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 disabled:opacity-60"
                 >
-                  {actionInFlight ? "Rejecting…" : "Reject payment"}
+                  {rejectMutation.isPending ? "Rejecting…" : "Reject payment"}
                 </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* Confirm dialog */}
+        <AlertDialog
+          open={confirmPayment_ != null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmPayment_(null);
+          }}
+        >
+          <AlertDialogContent className="border-zinc-800 bg-zinc-900 sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm this EFT payment?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmPayment_?.package_name} (
+                <span className="font-mono">{confirmPayment_?.reference}</span>) from{" "}
+                {confirmPayment_?.user_email}. This grants{" "}
+                {confirmPayment_ ? (confirmPayment_.annual_credits ?? confirmPayment_.credits) : 0}{" "}
+                credits and triggers the referrer reward (best-effort). This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (confirmPayment_) void confirmPayment(confirmPayment_);
+                }}
+                disabled={confirmMutation.isPending}
+                className="bg-teal-700 text-white hover:bg-teal-600"
+              >
+                {confirmMutation.isPending ? "Confirming…" : "Confirm & grant credits"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminShell>
   );

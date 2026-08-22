@@ -20,7 +20,9 @@ Every command runs from the repo root unless stated otherwise.
       cannot be created. _(As of 2026-08-21 this was still pending on the
       operator account.)_
 - [ ] Local gate green: `nub run check` passes (typecheck, oxlint, oxfmt,
-      unit, e2e, build)
+      unit, e2e, build). The e2e leg wipes local D1 first (`nub run reset:d1`)
+      so every gate run starts from the migrations alone — admin listings stay
+      bounded and axe scans deterministic.
 
 ## 1. Database migrations (remote D1)
 

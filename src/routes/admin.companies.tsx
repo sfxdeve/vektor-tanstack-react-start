@@ -1,11 +1,12 @@
-// oxlint-disable react/set-state-in-effect, jsx-a11y/control-has-associated-label
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminShell } from "@/components/admin-layout";
+import { Spinner } from "@/components/ui/spinner";
+import { apiGet, apiSend, qk } from "@/lib/api-client";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
-import { getUserRole } from "@/lib/admin-client";
 
 export const Route = createFileRoute("/admin/companies")({
   component: AdminCompaniesPage,
@@ -50,59 +51,42 @@ type CompanyDetail = {
   compliance: { total: number; expired: number; compliant: number };
 };
 
+function fetchAdminCompanies(q: string): Promise<CompanyRow[]> {
+  const url = q ? `/api/admin/companies?q=${encodeURIComponent(q)}` : "/api/admin/companies";
+  return apiGet<CompanyRow[]>(url);
+}
+
 function AdminCompaniesPage() {
-  const { session, isPending } = useAdminGuard();
-  const [companies, setCompanies] = useState<CompanyRow[] | null>(null);
+  const queryClient = useQueryClient();
+  const { session, isPending: guardPending } = useAdminGuard();
+  // Debounced server-side search over the capped listing window.
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<CompanyRow | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
 
-  const fetchCompanies = useCallback(async (q?: string) => {
-    setRefreshing(true);
-    try {
-      const url = q ? `/api/admin/companies?q=${encodeURIComponent(q)}` : "/api/admin/companies";
-      const r = await fetch(url);
-      if (!r.ok) throw new Error("Failed to load companies");
-      const data = (await r.json()) as CompanyRow[];
-      setCompanies(data);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load companies");
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
-    if (!isPending && session?.user && getUserRole(session as never) === "admin") {
-      void fetchCompanies();
-    }
-  }, [isPending, session, fetchCompanies]);
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
-  const filtered = useMemo(() => {
-    if (!companies) return null;
-    const q = search.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter(
-      (c) =>
-        c.company_name.toLowerCase().includes(q) ||
-        c.cipc_num.toLowerCase().includes(q) ||
-        (c.owner_email || "").toLowerCase().includes(q) ||
-        (c.owner_name || "").toLowerCase().includes(q),
-    );
-  }, [companies, search]);
+  const isAdmin = session?.user?.role === "admin";
+  const companiesQueryResult = useQuery({
+    queryKey: [...qk.adminCompanies, search],
+    queryFn: () => fetchAdminCompanies(search),
+    enabled: !guardPending && isAdmin,
+  });
+  const companies = companiesQueryResult.data;
+  const filtered = companies ?? null;
 
   const openDetail = async (row: CompanyRow) => {
     setDetailLoading(true);
     setSelectedDetail(null);
     try {
-      const r = await fetch(`/api/admin/companies/${row.id}`);
-      if (!r.ok) throw new Error("Failed to load company detail");
-      const data = (await r.json()) as CompanyDetail;
-      setSelectedDetail(data);
+      setSelectedDetail(await apiGet<CompanyDetail>(`/api/admin/companies/${row.id}`));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load detail");
     } finally {
@@ -110,28 +94,22 @@ function AdminCompaniesPage() {
     }
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: (companyId: string) =>
+      apiSend<{ cascaded?: unknown }>("DELETE", `/api/admin/companies/${companyId}`),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.adminCompanies }),
+  });
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
-    setDeleting(true);
     try {
-      const r = await fetch(`/api/admin/companies/${pendingDelete.id}`, { method: "DELETE" });
-      const body = (await r.json().catch(() => null)) as {
-        detail?: string;
-        cascaded?: unknown;
-      } | null;
-      if (!r.ok) {
-        toast.error(body?.detail || "Delete failed");
-        return;
-      }
+      const body = await deleteMutation.mutateAsync(pendingDelete.id);
       toast.success(`Deleted "${pendingDelete.company_name}"`, {
         description: `Cascaded: ${JSON.stringify(body?.cascaded ?? {})}`,
       });
-      setCompanies((prev) => (prev ? prev.filter((x) => x.id !== pendingDelete.id) : prev));
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -155,12 +133,10 @@ function AdminCompaniesPage() {
     }
   };
 
-  if (isPending) {
+  if (guardPending || !session?.user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-400 uppercase">
-          Loading…
-        </div>
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
@@ -185,8 +161,8 @@ function AdminCompaniesPage() {
           </div>
           <button
             type="button"
-            onClick={() => void fetchCompanies(search || undefined)}
-            disabled={refreshing}
+            onClick={() => void companiesQueryResult.refetch()}
+            disabled={companiesQueryResult.isFetching}
             data-testid="admin-refresh-btn"
             className="inline-flex items-center gap-2 self-start rounded-sm border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
           >
@@ -202,7 +178,7 @@ function AdminCompaniesPage() {
             type="search"
             placeholder="Search by company, CIPC, or owner"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => setSearchInput(e.target.value)}
             data-testid="admin-companies-search"
             // alias for legacy selector
             aria-label="Search companies"
@@ -225,7 +201,7 @@ function AdminCompaniesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {companies === null && (
+                {companiesQueryResult.isPending && (
                   <tr>
                     <td colSpan={7} className="px-6 py-10 text-center text-sm text-zinc-400">
                       Loading…
@@ -447,11 +423,11 @@ function AdminCompaniesPage() {
                 <button
                   type="button"
                   onClick={() => void confirmDelete()}
-                  disabled={deleting}
+                  disabled={deleteMutation.isPending}
                   data-testid="admin-delete-confirm"
                   className="rounded-sm bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 disabled:opacity-60"
                 >
-                  {deleting ? "Deleting…" : "Delete company"}
+                  {deleteMutation.isPending ? "Deleting…" : "Delete company"}
                 </button>
               </div>
             </div>

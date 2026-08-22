@@ -8,6 +8,9 @@ import type { EftStatus } from "@/lib/eft";
 import { toApiEftPayment } from "@/lib/eft-api";
 import { requireAdmin } from "@/lib/server-auth";
 
+/** Cap on rows returned per request — mirrors the old backend's list caps. */
+const ADMIN_EFT_LIMIT = 200;
+
 export const Route = createFileRoute("/api/eft/admin/all")({
   server: {
     handlers: {
@@ -25,7 +28,12 @@ export const Route = createFileRoute("/api/eft/admin/all")({
               .from(eftPayments)
               .where(eq(eftPayments.status, statusFilter as EftStatus))
               .orderBy(desc(eftPayments.createdAt))
-          : await db.select().from(eftPayments).orderBy(desc(eftPayments.createdAt));
+              .limit(ADMIN_EFT_LIMIT)
+          : await db
+              .select()
+              .from(eftPayments)
+              .orderBy(desc(eftPayments.createdAt))
+              .limit(ADMIN_EFT_LIMIT);
         return Response.json({ payments: rows.map(toApiEftPayment) });
       },
     },

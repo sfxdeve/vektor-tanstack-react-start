@@ -1,13 +1,44 @@
-// oxlint-disable react/set-state-in-effect, react/purity
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  ArrowLeftIcon,
+  ArrowUpRightIcon,
+  CheckCircleIcon,
+  FileTextIcon,
+  XCircleIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { useRequireUser } from "@/hooks/use-require-user";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import { Sidebar } from "@/components/sidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,8 +48,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { XIcon } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
+import { apiForm, apiSend } from "@/lib/api-client";
+import type { VaultDoc } from "@/lib/api-client";
+import { companiesQuery, councilsQuery, documentsQuery } from "@/lib/queries";
+import { downloadAuthenticatedFile } from "@/lib/download";
 import {
   NEEDS_EXPIRY_TYPES,
   isBbbeeMismatch,
@@ -27,48 +62,30 @@ import {
   type DocType,
   type VaultDocMutation,
 } from "@/lib/compliance";
+import { useRequireUser } from "@/hooks/use-require-user";
 
 export const Route = createFileRoute("/documents")({
   component: DocumentsPage,
 });
 
-type Company = {
-  id: string;
-  company_name: string;
-  cipc_num?: string;
-  bbbee_level?: number | null;
-};
-
-type VaultDoc = {
-  id: string;
-  company_id: string;
-  doc_type: string;
-  file_name: string;
-  expiry_date: string | null;
-  is_compliant: boolean;
-  storage_key?: string | null;
-  bargaining_council: string | null;
-  extracted_bbbee_level: number | null;
-  extracted_expiry_date: string | null;
-  created_at: string;
-};
-
 const PREVIEW_TYPES = NEEDS_EXPIRY_TYPES;
 
 function DocumentsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { session, isPending } = useRequireUser();
+  const authenticated = Boolean(session?.user);
 
-  const [companies, setCompanies] = useState<Company[]>([]);
+  const companiesQueryResult = useQuery({ ...companiesQuery(), enabled: authenticated });
+  const councilsQueryResult = useQuery(councilsQuery());
+  const councilCatalog = councilsQueryResult.data?.councils ?? [];
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [documents, setDocuments] = useState<VaultDoc[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchingDocs, setFetchingDocs] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
     id: string;
     file_name: string;
-    doc_type?: string;
+    doc_type: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editingDoc, setEditingDoc] = useState<VaultDoc | null>(null);
@@ -85,77 +102,51 @@ function DocumentsPage() {
     is_compliant: true,
     bargaining_council: null,
   });
-  const [councilCatalog, setCouncilCatalog] = useState<
-    Array<{
-      code: string;
-      name: string;
-      scope: string;
-      sectors: string[];
-      cidb_classes: string[];
-      regions?: string[];
-      website?: string | null;
-    }>
-  >([]);
   const [bbbeePreview, setBbbeePreview] = useState<{
     level: number | null;
     expiry: string | null;
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
+  const companies = companiesQueryResult.data ?? [];
   const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? companies[0] ?? null;
+  const companyId = selectedCompany?.id;
 
-  useRequireUser();
+  const documentsQueryResult = useQuery({
+    ...documentsQuery(companyId!),
+    enabled: Boolean(companyId),
+  });
+  const documents = documentsQueryResult.data ?? [];
 
+  // Auto-select the first company once the list arrives.
+  // oxlint-disable-next-line react/set-state-in-effect
   useEffect(() => {
-    fetch("/api/reference/bargaining-councils")
-      .then((r) => r.json())
-      .then((d) => setCouncilCatalog((d as { councils: typeof councilCatalog }).councils || []))
-      .catch(() => setCouncilCatalog([]));
-  }, []);
+    if (!selectedCompanyId && companies.length > 0) {
+      setSelectedCompanyId(companies[0]!.id);
+    }
+  }, [companies, selectedCompanyId]);
 
-  useEffect(() => {
-    if (!session?.user) return;
-    fetch("/api/companies")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const list = Array.isArray(data) ? (data as Company[]) : [];
-        setCompanies(list);
-        if (list.length > 0 && !selectedCompanyId) {
-          setSelectedCompanyId(list[0]!.id);
-        }
-      })
-      .catch(() => setCompanies([]));
-  }, [session, selectedCompanyId]);
+  const invalidateDocuments = () =>
+    queryClient.invalidateQueries({ queryKey: documentsQuery(companyId!).queryKey });
+
+  const uploadMutation = useMutation({
+    mutationFn: (form: FormData) => apiForm<VaultDoc>("/api/documents/upload", form),
+    onSuccess: () => void invalidateDocuments(),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (docId: string) => apiSend<void>("DELETE", `/api/documents/${docId}`),
+    onSuccess: () => void invalidateDocuments(),
+  });
+  const editMutation = useMutation({
+    mutationFn: ({ docId, payload }: { docId: string; payload: Record<string, unknown> }) =>
+      apiSend<VaultDoc>("PATCH", `/api/documents/${docId}`, payload),
+    onSuccess: () => void invalidateDocuments(),
+  });
 
   const councilLabel = useCallback(
     (code: string) => councilCatalog.find((c) => c.code === code)?.name || code,
     [councilCatalog],
   );
-
-  const fetchDocuments = useCallback(async (companyId: string) => {
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`/api/documents/company/${companyId}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { detail?: string }).detail || "Failed to fetch documents");
-      }
-      const data = (await res.json()) as VaultDoc[];
-      setDocuments(Array.isArray(data) ? data : []);
-    } catch {
-      setDocuments([]);
-    } finally {
-      setFetchingDocs(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedCompany) {
-      void fetchDocuments(selectedCompany.id);
-    } else {
-      setDocuments([]);
-    }
-  }, [selectedCompany, fetchDocuments]);
 
   // Preview extraction when file or doc_type changes
   useEffect(() => {
@@ -224,12 +215,7 @@ function DocumentsPage() {
         return true;
       });
 
-      const res = await fetch("/api/documents/upload", { method: "POST", body: multipart });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { detail?: string }).detail || "Failed to upload document");
-      }
-      const uploaded = (await res.json()) as VaultDoc;
+      const uploaded = await uploadMutation.mutateAsync(multipart);
 
       toast.success(
         replacingExisting
@@ -261,10 +247,8 @@ function DocumentsPage() {
 
       setFormData({ doc_type: "", expiry_date: "", is_compliant: true, bargaining_council: null });
       setUploadFile(null);
-      // reset file input value via DOM
       const fileInput = document.getElementById("file_name") as HTMLInputElement | null;
       if (fileInput) fileInput.value = "";
-      await fetchDocuments(selectedCompany.id);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to upload document";
       toast.error(msg);
@@ -275,23 +259,9 @@ function DocumentsPage() {
 
   const handleDownload = async (docId: string, fileName: string) => {
     try {
-      const res = await fetch(`/api/documents/download/${docId}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { detail?: string }).detail || "Failed to download");
-      }
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      await downloadAuthenticatedFile(`/api/documents/download/${docId}`, fileName);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to download document";
-      toast.error(msg);
+      toast.error(error instanceof Error ? error.message : "Failed to download document");
     }
   };
 
@@ -299,17 +269,11 @@ function DocumentsPage() {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/documents/${pendingDelete.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { detail?: string }).detail || "Failed to delete document");
-      }
-      setDocuments((prev) => prev.filter((d) => d.id !== pendingDelete.id));
+      await deleteMutation.mutateAsync(pendingDelete.id);
       toast.success(`"${pendingDelete.file_name}" removed from vault`);
       setPendingDelete(null);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to delete document";
-      toast.error(msg);
+      toast.error(error instanceof Error ? error.message : "Failed to delete document");
     } finally {
       setDeleting(false);
     }
@@ -343,40 +307,25 @@ function DocumentsPage() {
       if (isBcGos(editingDoc.doc_type)) {
         payload.bargaining_council = editForm.bargaining_council;
       }
-      const res = await fetch(`/api/documents/${editingDoc.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { detail?: string }).detail || "Failed to update document");
-      }
-      const updated = (await res.json()) as VaultDoc;
-      setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+      await editMutation.mutateAsync({ docId: editingDoc.id, payload });
       toast.success("Document updated");
       setEditingDoc(null);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to update document";
-      toast.error(msg);
+      toast.error(error instanceof Error ? error.message : "Failed to update document");
     } finally {
       setSavingEdit(false);
     }
   };
 
-  if (isPending) {
+  if (isPending || !session?.user) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-500 uppercase">
-          Loading…
-        </div>
+        <Spinner className="h-6 w-6 text-zinc-400" />
       </div>
     );
   }
 
-  if (!session?.user) return null;
-
-  if (!companies.length && !fetchingDocs) {
+  if (!companies.length && !companiesQueryResult.isPending) {
     return (
       <div className="flex min-h-screen flex-col lg:flex-row lg:h-screen">
         <ImpersonationBanner />
@@ -408,7 +357,8 @@ function DocumentsPage() {
             onClick={() => void navigate({ to: "/app" })}
             className="-ml-2 mb-4"
           >
-            ← Back to Dashboard
+            <ArrowLeftIcon aria-hidden="true" />
+            Back to Dashboard
           </Button>
           <h1
             className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl"
@@ -495,7 +445,8 @@ function DocumentsPage() {
                         rel="noopener noreferrer"
                         className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 underline underline-offset-2 hover:text-zinc-600"
                       >
-                        Verify TCS PIN at SARS Portal ↗
+                        Verify TCS PIN at SARS Portal
+                        <ArrowUpRightIcon className="h-3 w-3" aria-hidden="true" />
                       </a>
                     )}
                     {formData.doc_type === "BBBEE" && (
@@ -506,7 +457,8 @@ function DocumentsPage() {
                         rel="noopener noreferrer"
                         className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 underline underline-offset-2 hover:text-zinc-600"
                       >
-                        B-BBEE Commission Portal ↗
+                        B-BBEE Commission Portal
+                        <ArrowUpRightIcon className="h-3 w-3" aria-hidden="true" />
                       </a>
                     )}
                     {isBcGos(formData.doc_type) && (
@@ -706,14 +658,21 @@ function DocumentsPage() {
               <CardTitle className="text-xl font-bold">Document Registry</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {fetchingDocs ? (
-                <div className="p-8 text-center text-sm text-zinc-500">Loading documents…</div>
+              {documentsQueryResult.isPending ? (
+                <div className="flex justify-center p-8">
+                  <Spinner className="h-6 w-6 text-zinc-400" />
+                </div>
               ) : documents.length === 0 ? (
-                <div className="p-8 text-center" data-testid="empty-docs">
-                  <p className="text-4xl mb-3">📄</p>
-                  <p className="text-zinc-600">
-                    No documents uploaded yet. Add your first compliance document above.
-                  </p>
+                <div className="p-8" data-testid="empty-docs">
+                  <Empty className="gap-3">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <FileTextIcon aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>No documents uploaded yet</EmptyTitle>
+                      <EmptyDescription>Add your first compliance document above.</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -768,15 +727,23 @@ function DocumentsPage() {
                                 </span>
                               )}
                               {doc.doc_type === "BBBEE" && doc.extracted_bbbee_level != null && (
-                                <span
+                                <Badge
+                                  variant={
+                                    isBbbeeMismatch(
+                                      selectedCompany?.bbbee_level,
+                                      doc.extracted_bbbee_level,
+                                    )
+                                      ? "secondary"
+                                      : "outline"
+                                  }
                                   data-testid={`doc-bbbee-cert-level-${doc.id}`}
-                                  className={`ml-2 inline-flex items-center rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${
+                                  className={`ml-2 rounded-sm uppercase ${
                                     isBbbeeMismatch(
                                       selectedCompany?.bbbee_level,
                                       doc.extracted_bbbee_level,
                                     )
                                       ? "bg-orange-100 text-orange-800"
-                                      : "bg-zinc-100 text-zinc-700"
+                                      : ""
                                   }`}
                                 >
                                   {isBbbeeMismatch(
@@ -785,7 +752,7 @@ function DocumentsPage() {
                                   )
                                     ? `Cert L${doc.extracted_bbbee_level} ≠ Profile L${selectedCompany?.bbbee_level}`
                                     : `Cert L${doc.extracted_bbbee_level}`}
-                                </span>
+                                </Badge>
                               )}
                             </td>
                             <td className="px-6 py-4 text-sm" data-testid={`doc-file-${doc.id}`}>
@@ -822,17 +789,18 @@ function DocumentsPage() {
                             <td className="px-6 py-4">
                               {doc.is_compliant && !isExpired ? (
                                 <span
-                                  className="inline-flex items-center gap-1 text-green-600 text-sm font-semibold"
+                                  className="inline-flex items-center gap-1 text-sm font-semibold text-green-600"
                                   data-testid={`doc-status-compliant-${doc.id}`}
                                 >
-                                  ● Compliant
+                                  <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+                                  Compliant
                                 </span>
                               ) : (
                                 <span
-                                  className="inline-flex items-center gap-1 text-red-600 text-sm font-semibold"
+                                  className="inline-flex items-center gap-1 text-sm font-semibold text-red-600"
                                   data-testid={`doc-status-noncompliant-${doc.id}`}
                                 >
-                                  <XIcon className="h-4 w-4" aria-hidden="true" />
+                                  <XCircleIcon className="h-4 w-4" aria-hidden="true" />
                                   {isExpired ? "Expired" : "Non-Compliant"}
                                 </span>
                               )}
@@ -883,53 +851,57 @@ function DocumentsPage() {
         </div>
       </main>
 
-      {pendingDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          data-testid="delete-doc-dialog"
-        >
-          <div className="w-full max-w-md rounded-sm border border-zinc-200 bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-bold">Remove this document?</h3>
-            <p className="mt-2 text-sm text-zinc-600">
-              <strong>{pendingDelete.doc_type?.replace("_", " ")}</strong> —{" "}
-              {pendingDelete.file_name}
-              <span className="block mt-2">
+      <AlertDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent data-testid="delete-doc-dialog" className="rounded-sm sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{pendingDelete?.doc_type.replaceAll("_", " ")}</strong> —{" "}
+              {pendingDelete?.file_name}
+              <span className="mt-2 block">
                 This deletes the file from your vault and cannot be undone. Any pending expiry
                 reminders for this document will also be cleared.
               </span>
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                data-testid="delete-doc-cancel"
-                variant="outline"
-                disabled={deleting}
-                onClick={() => setPendingDelete(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                data-testid="delete-doc-confirm"
-                onClick={() => void confirmDelete()}
-                disabled={deleting}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {deleting ? "Deleting..." : "Delete document"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="delete-doc-cancel" disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="delete-doc-confirm"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {deleting ? "Deleting..." : "Delete document"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {editingDoc && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          data-testid="edit-doc-dialog"
-        >
-          <div className="w-full max-w-md rounded-sm border border-zinc-200 bg-white p-6 shadow-lg">
-            <h3 className="text-lg font-bold">Edit Document</h3>
-            <p className="text-xs text-zinc-500 mt-1">
-              {editingDoc.doc_type.replace(/_/g, " ")} — {editingDoc.file_name}
-            </p>
+      <Dialog
+        open={editingDoc != null}
+        onOpenChange={(open) => {
+          if (!open) setEditingDoc(null);
+        }}
+      >
+        {editingDoc && (
+          <DialogContent data-testid="edit-doc-dialog" className="rounded-sm sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Document</DialogTitle>
+              <DialogDescription>
+                {editingDoc?.doc_type.replace(/_/g, " ")} — {editingDoc?.file_name}
+              </DialogDescription>
+            </DialogHeader>
             <div className="mt-4 space-y-4">
               <div>
                 <Label className="text-xs font-semibold tracking-[0.1em] uppercase">
@@ -1004,7 +976,7 @@ function DocumentsPage() {
                 </div>
               )}
             </div>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="flex justify-end gap-3">
               <Button
                 data-testid="edit-doc-cancel"
                 variant="outline"
@@ -1017,14 +989,13 @@ function DocumentsPage() {
                 data-testid="edit-doc-save"
                 disabled={savingEdit}
                 onClick={() => void handleEditSave()}
-                className="bg-zinc-900 text-white hover:bg-zinc-800"
               >
                 {savingEdit ? "Saving..." : "Save changes"}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

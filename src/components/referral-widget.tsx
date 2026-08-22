@@ -1,34 +1,17 @@
-// oxlint-disable react/set-state-in-effect
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  CoinsIcon,
+  CopyIcon,
+  MailIcon,
+  MessageCircleIcon,
+  TrendingUpIcon,
+  UsersIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Users, Coins, TrendingUp, Copy, Mail, MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
-interface ReferralStats {
-  code: string;
-  invited_count: number;
-  paid_count: number;
-  subscribed_count: number;
-  credits_earned: number;
-  monthly_used: number;
-  monthly_cap: number;
-  monthly_remaining: number;
-  lifetime_used: number;
-  lifetime_cap: number;
-  lifetime_remaining: number;
-  reward_config: {
-    referee_signup_bonus: number;
-    tier_rewards: Record<string, number>;
-  };
-  recent: Array<{
-    referee_email: string;
-    status: string;
-    created_at: string;
-    first_paid_at: string | null;
-  }>;
-}
+import { myReferralsQuery } from "@/lib/queries";
 
 const TIER_ROWS = [
   { key: "tc_starter_monthly_v2", label: "Starter" },
@@ -37,27 +20,10 @@ const TIER_ROWS = [
 ];
 
 export function ReferralWidget() {
-  const [stats, setStats] = useState<ReferralStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats } = useQuery(myReferralsQuery());
 
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch("/api/referrals/my");
-      if (!r.ok) return;
-      const data = (await r.json()) as ReferralStats;
-      setStats(data);
-    } catch {
-      // non-critical
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (loading || !stats) return null;
+  // The widget is an optional upsell panel — render nothing until loaded.
+  if (!stats) return null;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareUrl = `${origin}/signup?ref=${stats.code}`;
@@ -80,7 +46,7 @@ export function ReferralWidget() {
       <CardContent className="p-6 lg:p-7">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-9 h-9 rounded-sm bg-teal-500/10 border border-teal-500/30 flex items-center justify-center">
-            <Users size={18} className="text-teal-600" />
+            <UsersIcon size={18} className="text-teal-600" />
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-teal-700 font-bold">
@@ -131,7 +97,7 @@ export function ReferralWidget() {
             onClick={() => void copy("Link", shareUrl)}
             data-testid="referral-copy-link"
           >
-            <Copy size={13} className="mr-1.5" />
+            <CopyIcon size={13} className="mr-1.5" />
             Copy
           </Button>
         </div>
@@ -144,7 +110,7 @@ export function ReferralWidget() {
             className="inline-flex items-center gap-1.5 rounded-sm bg-[#25D366] hover:bg-[#20b95a] text-white text-xs font-bold px-3 py-2 transition-colors"
             data-testid="referral-whatsapp"
           >
-            <MessageCircle size={14} />
+            <MessageCircleIcon size={14} />
             Share on WhatsApp
           </a>
           <a
@@ -152,14 +118,14 @@ export function ReferralWidget() {
             className="inline-flex items-center gap-1.5 rounded-sm bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold px-3 py-2 transition-colors"
             data-testid="referral-email"
           >
-            <Mail size={14} />
+            <MailIcon size={14} />
             Email
           </a>
         </div>
 
         <div className="mt-6 pt-5 border-t border-zinc-200 grid grid-cols-3 gap-4">
           <div className="text-center">
-            <Users size={16} className="mx-auto mb-1 text-zinc-400" />
+            <UsersIcon size={16} className="mx-auto mb-1 text-zinc-400" />
             <p
               className="text-2xl font-black tracking-tight text-zinc-900"
               data-testid="referral-stat-invited"
@@ -171,7 +137,7 @@ export function ReferralWidget() {
             </p>
           </div>
           <div className="text-center">
-            <TrendingUp size={16} className="mx-auto mb-1 text-zinc-400" />
+            <TrendingUpIcon size={16} className="mx-auto mb-1 text-zinc-400" />
             <p
               className="text-2xl font-black tracking-tight text-zinc-900"
               data-testid="referral-stat-paid"
@@ -183,7 +149,7 @@ export function ReferralWidget() {
             </p>
           </div>
           <div className="text-center">
-            <Coins size={16} className="mx-auto mb-1 text-teal-600" />
+            <CoinsIcon size={16} className="mx-auto mb-1 text-teal-600" />
             <p
               className="text-2xl font-black tracking-tight text-teal-700"
               data-testid="referral-stat-earned"
@@ -197,10 +163,12 @@ export function ReferralWidget() {
         </div>
 
         <p className="mt-5 text-[11px] text-zinc-500 leading-relaxed">
-          Fair-use limit: <strong className="text-zinc-700">{stats.monthly_remaining}</strong>{" "}
+          Fair-use limit:{" "}
+          <strong className="text-zinc-700">{stats.monthly_cap - stats.monthly_used}</strong>{" "}
           rewards remaining this month ·{" "}
-          <strong className="text-zinc-700">{stats.lifetime_remaining}</strong> remaining lifetime ·
-          Rewards apply only after the referee completes their first paid subscription EFT.
+          <strong className="text-zinc-700">{stats.lifetime_cap - stats.lifetime_used}</strong>{" "}
+          remaining lifetime · Rewards apply only after the referee completes their first paid
+          subscription EFT.
         </p>
 
         {stats.recent && stats.recent.length > 0 && (

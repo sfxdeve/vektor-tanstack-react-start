@@ -86,18 +86,16 @@ test.describe("Dashboard, Activity, Static/Help (Issue 08)", () => {
     expect(gridClass).toContain("md:grid-cols-3");
     expect(gridClass).toContain("lg:grid-cols-4");
 
-    // check compliance and CIDB cards exist
-    await expect(page.getByTestId("dashboard-card-compliance")).toBeVisible();
-    await expect(page.getByTestId("dashboard-card-cidb")).toBeVisible();
-    await expect(page.getByTestId("dashboard-card-avg-score")).toBeVisible();
+    // stat cards — one per metric, no aliasing
+    for (const id of ["stat-bbbee", "stat-cidb", "stat-compliance", "stat-avg-score"]) {
+      await expect(page.getByTestId(id)).toBeVisible();
+    }
     // CIDB display should show 4GB
     await expect(page.getByTestId("cidb-display")).toContainText("4GB");
     // bbbee level 2
     await expect(page.getByTestId("stat-bbbee-value")).toContainText("Level 2");
     // compliance status
-    await expect(page.getByTestId("dashboard-card-compliance")).toContainText(
-      /Documents Compliant/,
-    );
+    await expect(page.getByTestId("stat-compliance")).toContainText(/Documents compliant/);
 
     // quick actions links
     await expect(page.getByTestId("manage-documents-btn")).toBeVisible();

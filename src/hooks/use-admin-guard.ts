@@ -4,15 +4,6 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { asVektorSession, authClient } from "@/lib/auth/auth-client";
 
-/** True when an admin is currently wearing a user hat (impersonation active). */
-export function useImpersonationState() {
-  const { data: session } = authClient.useSession();
-  return {
-    impersonatedBy: session?.session.impersonatedBy ?? null,
-    role: session?.user.role ?? null,
-  };
-}
-
 /**
  * Guard for /admin/* pages. Behavior mirrors the old AdminRoute:
  *   - unauthenticated → /login

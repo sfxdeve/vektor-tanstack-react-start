@@ -7,6 +7,13 @@ import { user } from "@/db/schema/auth";
 import { companies } from "@/db/schema/company";
 import { requireAdmin } from "@/lib/server-auth";
 
+/**
+ * Cap on rows returned per request — mirrors the old backend's `.to_list(100)`
+ * list caps. The console is a working queue, not an export; the search box
+ * narrows within the returned window.
+ */
+const ADMIN_USERS_LIMIT = 100;
+
 export const Route = createFileRoute("/api/admin/users")({
   server: {
     handlers: {
@@ -29,7 +36,8 @@ export const Route = createFileRoute("/api/admin/users")({
                 )
               : undefined,
           )
-          .orderBy(desc(user.createdAt));
+          .orderBy(desc(user.createdAt))
+          .limit(ADMIN_USERS_LIMIT);
 
         // company counts per user (single grouped query)
         const counts = await db

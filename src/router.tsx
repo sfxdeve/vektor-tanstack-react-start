@@ -8,7 +8,18 @@ import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // App data (companies, documents, tenders, credits) only changes
+        // through user actions in this app, so aggressive background refetching
+        // just churns renders (and starves axe scans in e2e).
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
+  });
   const router = createRouter({
     routeTree,
     context: { queryClient },

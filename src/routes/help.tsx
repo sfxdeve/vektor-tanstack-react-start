@@ -199,8 +199,7 @@ function HelpContent() {
           ))}
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          No ElevenLabs or OpenAI voiceover is generated — these are static slides with structured
-          captions, so onboarding works without an audio provider.
+          Each chapter pairs a slide with a short caption — read the walkthrough at your own pace.
         </p>
       </section>
 

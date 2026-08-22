@@ -257,7 +257,8 @@ test.describe("Referrals", () => {
       const r = await fetch(`/api/billing/credits/${cid}`);
       return (await r.json()) as { credits: number };
     });
-    expect(credits.credits).toBe(5);
+    // 1 signup trial credit + 5 referral reward credits.
+    expect(credits.credits).toBe(6);
 
     // Verify share link and stats via API (UI widget is covered by the a11y test for a regular user).
     // This avoids a second login flake while still proving the share URL contains the code and stats are correct.

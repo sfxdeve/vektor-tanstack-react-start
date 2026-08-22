@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { GiftIcon } from "lucide-react";
+import { ArrowRight, GiftIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -200,7 +200,7 @@ function SignupPage() {
           className="w-full bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400"
         >
           {submitting ? "Creating account…" : "Create account & start free"}
-          {!submitting && <span className="ml-2">→</span>}
+          {!submitting && <ArrowRight className="ml-2" aria-hidden="true" />}
         </Button>
       </form>
     </AuthShell>

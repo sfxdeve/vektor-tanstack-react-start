@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { HandshakeIcon, SearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -162,7 +163,7 @@ function AboutPage() {
                 Who we serve
               </p>
               <div className="mt-4 flex h-10 w-10 items-center justify-center rounded-sm bg-zinc-100 text-zinc-700">
-                <span aria-hidden>🤝</span>
+                <HandshakeIcon aria-hidden="true" />
               </div>
             </div>
             <div className="space-y-4 leading-relaxed text-zinc-700 md:col-span-2">
@@ -420,7 +421,7 @@ function AboutPage() {
               </Link>
             </div>
             <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold tracking-[0.15em] text-zinc-500 uppercase">
-              <span aria-hidden>🔍</span> Built for South African contractors
+              <SearchIcon aria-hidden="true" /> Built for South African contractors
             </p>
           </div>
         </section>

@@ -22,11 +22,16 @@ export const Route = createFileRoute("/api/companies/")({
         const session = await requireUser(request);
         if (session instanceof Response) return session;
 
+        // Always owner-scoped — this is the user-side list behind /setup,
+        // /analyze and the dashboard. Admins keep their own companies here
+        // exactly like everyone else; cross-tenant browsing lives in
+        // /api/admin/companies.
         const db = createDb(env.DB);
-        const isAdmin = session.user.role === "admin";
-        const rows = isAdmin
-          ? await db.select().from(companies)
-          : await db.select().from(companies).where(eq(companies.userId, session.user.id));
+        const rows = await db
+          .select()
+          .from(companies)
+          .where(eq(companies.userId, session.user.id))
+          .orderBy(companies.createdAt);
         return Response.json(rows.map(toApiCompany));
       },
       POST: async ({ request }) => {

@@ -5,7 +5,6 @@
  */
 
 export interface CatalogEntry {
-  emergent_product_id: string;
   name: string;
   description: string;
   persona: string;
@@ -22,7 +21,6 @@ export interface CatalogEntry {
 
 export const CATALOG: CatalogEntry[] = [
   {
-    emergent_product_id: "tc_starter",
     name: "Starter",
     description: "5 tender analyses per month",
     persona: "Freelancers & occasional tender bidders",
@@ -36,7 +34,6 @@ export const CATALOG: CatalogEntry[] = [
     billing_period: "monthly",
   },
   {
-    emergent_product_id: "tc_pro",
     name: "Pro",
     description: "20 tender analyses per month",
     persona: "Growing businesses bidding monthly",
@@ -50,7 +47,6 @@ export const CATALOG: CatalogEntry[] = [
     billing_period: "monthly",
   },
   {
-    emergent_product_id: "tc_scale",
     name: "Scale",
     description: "50 tender analyses per month",
     persona: "Active contractors & high-volume vendors",
@@ -64,7 +60,6 @@ export const CATALOG: CatalogEntry[] = [
     billing_period: "monthly",
   },
   {
-    emergent_product_id: "tc_credits_1",
     name: "Single Analysis",
     description: "1 tender analysis credit — perfect for quick one-off tender checks",
     persona: "One-off tender check",

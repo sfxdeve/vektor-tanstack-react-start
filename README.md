@@ -19,6 +19,10 @@ nub run dev
 - `nub run deploy:preview` uploads a Cloudflare preview version.
 - `nub run cf-typegen` generates Cloudflare runtime and binding types.
 - `nub run check` runs type checking, linting, formatting, unit tests, e2e tests, and the build.
+- `nub run reset:d1` wipes local D1 state and re-applies migrations (run automatically
+  before e2e so gate runs are deterministic; dev data is disposable).
+- `nub run seed:admin` creates the first admin account against a running dev server
+  (`ADMIN_EMAIL`/`ADMIN_PASSWORD` env required — see `scripts/seed-admin.ts`).
 - `nub run clean` removes generated output.
 
 The scaffold uses shadcn/ui with Base UI primitives and the `base-nova` preset. Add components with:

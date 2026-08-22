@@ -63,10 +63,12 @@ import { Route as ApiEftUploadProofPaymentIdRouteImport } from './routes/api/eft
 import { Route as ApiRemindersTestCompanyIdRouteImport } from './routes/api/reminders/test.$companyId'
 import { Route as ApiTenderTenderIdSbd4RouteImport } from './routes/api/tender/$tenderId/sbd4'
 import { Route as ApiTenderTenderIdSbd61RouteImport } from './routes/api/tender/$tenderId/sbd61'
+import { Route as ApiTendersDownloadTenderIdRouteImport } from './routes/api/tenders/download/$tenderId'
 import { Route as ApiEftAdminPaymentIdConfirmRouteImport } from './routes/api/eft/admin/$paymentId/confirm'
 import { Route as ApiEftAdminPaymentIdRejectRouteImport } from './routes/api/eft/admin/$paymentId/reject'
 import { Route as ApiEftAdminProofPaymentIdRouteImport } from './routes/api/eft/admin/proof/$paymentId'
 import { Route as ApiTenderTenderIdReturnablesToggleRouteImport } from './routes/api/tender/$tenderId/returnables/toggle'
+import { Route as ApiTenderTenderIdReturnablesUploadRouteImport } from './routes/api/tender/$tenderId/returnables/upload'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -347,6 +349,12 @@ const ApiTenderTenderIdSbd61Route = ApiTenderTenderIdSbd61RouteImport.update({
   path: '/sbd61',
   getParentRoute: () => ApiTenderTenderIdRoute,
 } as any)
+const ApiTendersDownloadTenderIdRoute =
+  ApiTendersDownloadTenderIdRouteImport.update({
+    id: '/api/tenders/download/$tenderId',
+    path: '/api/tenders/download/$tenderId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiEftAdminPaymentIdConfirmRoute =
   ApiEftAdminPaymentIdConfirmRouteImport.update({
     id: '/api/eft/admin/$paymentId/confirm',
@@ -369,6 +377,12 @@ const ApiTenderTenderIdReturnablesToggleRoute =
   ApiTenderTenderIdReturnablesToggleRouteImport.update({
     id: '/returnables/toggle',
     path: '/returnables/toggle',
+    getParentRoute: () => ApiTenderTenderIdRoute,
+  } as any)
+const ApiTenderTenderIdReturnablesUploadRoute =
+  ApiTenderTenderIdReturnablesUploadRouteImport.update({
+    id: '/returnables/upload',
+    path: '/returnables/upload',
     getParentRoute: () => ApiTenderTenderIdRoute,
   } as any)
 
@@ -427,10 +441,12 @@ export interface FileRoutesByFullPath {
   '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/tenders/download/$tenderId': typeof ApiTendersDownloadTenderIdRoute
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
   '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
   '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
+  '/api/tender/$tenderId/returnables/upload': typeof ApiTenderTenderIdReturnablesUploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -487,10 +503,12 @@ export interface FileRoutesByTo {
   '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/tenders/download/$tenderId': typeof ApiTendersDownloadTenderIdRoute
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
   '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
   '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
+  '/api/tender/$tenderId/returnables/upload': typeof ApiTenderTenderIdReturnablesUploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -548,10 +566,12 @@ export interface FileRoutesById {
   '/api/reminders/test/$companyId': typeof ApiRemindersTestCompanyIdRoute
   '/api/tender/$tenderId/sbd4': typeof ApiTenderTenderIdSbd4Route
   '/api/tender/$tenderId/sbd61': typeof ApiTenderTenderIdSbd61Route
+  '/api/tenders/download/$tenderId': typeof ApiTendersDownloadTenderIdRoute
   '/api/eft/admin/$paymentId/confirm': typeof ApiEftAdminPaymentIdConfirmRoute
   '/api/eft/admin/$paymentId/reject': typeof ApiEftAdminPaymentIdRejectRoute
   '/api/eft/admin/proof/$paymentId': typeof ApiEftAdminProofPaymentIdRoute
   '/api/tender/$tenderId/returnables/toggle': typeof ApiTenderTenderIdReturnablesToggleRoute
+  '/api/tender/$tenderId/returnables/upload': typeof ApiTenderTenderIdReturnablesUploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -610,10 +630,12 @@ export interface FileRouteTypes {
     | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/tenders/download/$tenderId'
     | '/api/eft/admin/$paymentId/confirm'
     | '/api/eft/admin/$paymentId/reject'
     | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
+    | '/api/tender/$tenderId/returnables/upload'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -670,10 +692,12 @@ export interface FileRouteTypes {
     | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/tenders/download/$tenderId'
     | '/api/eft/admin/$paymentId/confirm'
     | '/api/eft/admin/$paymentId/reject'
     | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
+    | '/api/tender/$tenderId/returnables/upload'
   id:
     | '__root__'
     | '/'
@@ -730,10 +754,12 @@ export interface FileRouteTypes {
     | '/api/reminders/test/$companyId'
     | '/api/tender/$tenderId/sbd4'
     | '/api/tender/$tenderId/sbd61'
+    | '/api/tenders/download/$tenderId'
     | '/api/eft/admin/$paymentId/confirm'
     | '/api/eft/admin/$paymentId/reject'
     | '/api/eft/admin/proof/$paymentId'
     | '/api/tender/$tenderId/returnables/toggle'
+    | '/api/tender/$tenderId/returnables/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -783,6 +809,7 @@ export interface RootRouteChildren {
   ApiEftAdminAllRoute: typeof ApiEftAdminAllRoute
   ApiEftUploadProofPaymentIdRoute: typeof ApiEftUploadProofPaymentIdRoute
   ApiRemindersTestCompanyIdRoute: typeof ApiRemindersTestCompanyIdRoute
+  ApiTendersDownloadTenderIdRoute: typeof ApiTendersDownloadTenderIdRoute
   ApiEftAdminPaymentIdConfirmRoute: typeof ApiEftAdminPaymentIdConfirmRoute
   ApiEftAdminPaymentIdRejectRoute: typeof ApiEftAdminPaymentIdRejectRoute
   ApiEftAdminProofPaymentIdRoute: typeof ApiEftAdminProofPaymentIdRoute
@@ -1168,6 +1195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTenderTenderIdSbd61RouteImport
       parentRoute: typeof ApiTenderTenderIdRoute
     }
+    '/api/tenders/download/$tenderId': {
+      id: '/api/tenders/download/$tenderId'
+      path: '/api/tenders/download/$tenderId'
+      fullPath: '/api/tenders/download/$tenderId'
+      preLoaderRoute: typeof ApiTendersDownloadTenderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/eft/admin/$paymentId/confirm': {
       id: '/api/eft/admin/$paymentId/confirm'
       path: '/api/eft/admin/$paymentId/confirm'
@@ -1194,6 +1228,13 @@ declare module '@tanstack/react-router' {
       path: '/returnables/toggle'
       fullPath: '/api/tender/$tenderId/returnables/toggle'
       preLoaderRoute: typeof ApiTenderTenderIdReturnablesToggleRouteImport
+      parentRoute: typeof ApiTenderTenderIdRoute
+    }
+    '/api/tender/$tenderId/returnables/upload': {
+      id: '/api/tender/$tenderId/returnables/upload'
+      path: '/returnables/upload'
+      fullPath: '/api/tender/$tenderId/returnables/upload'
+      preLoaderRoute: typeof ApiTenderTenderIdReturnablesUploadRouteImport
       parentRoute: typeof ApiTenderTenderIdRoute
     }
   }
@@ -1252,6 +1293,7 @@ interface ApiTenderTenderIdRouteChildren {
   ApiTenderTenderIdSbd4Route: typeof ApiTenderTenderIdSbd4Route
   ApiTenderTenderIdSbd61Route: typeof ApiTenderTenderIdSbd61Route
   ApiTenderTenderIdReturnablesToggleRoute: typeof ApiTenderTenderIdReturnablesToggleRoute
+  ApiTenderTenderIdReturnablesUploadRoute: typeof ApiTenderTenderIdReturnablesUploadRoute
 }
 
 const ApiTenderTenderIdRouteChildren: ApiTenderTenderIdRouteChildren = {
@@ -1259,6 +1301,8 @@ const ApiTenderTenderIdRouteChildren: ApiTenderTenderIdRouteChildren = {
   ApiTenderTenderIdSbd61Route: ApiTenderTenderIdSbd61Route,
   ApiTenderTenderIdReturnablesToggleRoute:
     ApiTenderTenderIdReturnablesToggleRoute,
+  ApiTenderTenderIdReturnablesUploadRoute:
+    ApiTenderTenderIdReturnablesUploadRoute,
 }
 
 const ApiTenderTenderIdRouteWithChildren =
@@ -1311,6 +1355,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEftAdminAllRoute: ApiEftAdminAllRoute,
   ApiEftUploadProofPaymentIdRoute: ApiEftUploadProofPaymentIdRoute,
   ApiRemindersTestCompanyIdRoute: ApiRemindersTestCompanyIdRoute,
+  ApiTendersDownloadTenderIdRoute: ApiTendersDownloadTenderIdRoute,
   ApiEftAdminPaymentIdConfirmRoute: ApiEftAdminPaymentIdConfirmRoute,
   ApiEftAdminPaymentIdRejectRoute: ApiEftAdminPaymentIdRejectRoute,
   ApiEftAdminProofPaymentIdRoute: ApiEftAdminProofPaymentIdRoute,

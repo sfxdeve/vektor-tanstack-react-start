@@ -1,9 +1,11 @@
-// oxlint-disable react/set-state-in-effect
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { ArrowRightIcon, RefreshCwIcon } from "lucide-react";
 
-import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { AdminShell } from "@/components/admin-layout";
+import { apiGet } from "@/lib/api-client";
+import { qk } from "@/lib/api-client";
+import { useAdminGuard } from "@/hooks/use-admin-guard";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -18,43 +20,30 @@ interface AdminStats {
   eft?: { pending_review?: number };
 }
 
+function fetchAdminStats(): Promise<AdminStats> {
+  return apiGet<AdminStats>("/api/admin/stats");
+}
+
 function AdminPage() {
   const { session, isPending } = useAdminGuard();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const statsQueryResult = useQuery({
+    queryKey: qk.adminStats,
+    queryFn: fetchAdminStats,
+    enabled: !isPending && session?.user?.role === "admin",
+  });
+  const stats = statsQueryResult.data ?? null;
+  const refreshing = statsQueryResult.isFetching;
 
-  const fetchStats = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      const r = await fetch("/api/admin/stats");
-      if (r.ok) {
-        setStats((await r.json()) as AdminStats);
-      }
-    } catch {
-      // ignore
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isPending && session?.user?.role === "admin") {
-      void fetchStats();
-    }
-  }, [isPending, session, fetchStats]);
-
-  if (isPending) {
+  if (isPending || !session?.user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-400 uppercase">
+      <div className="flex h-screen items-center justify-center bg-zinc-950">
+        <span className="text-sm font-semibold uppercase tracking-[0.2em] text-zinc-400">
           Loading…
-        </div>
+        </span>
       </div>
     );
   }
-
-  if (!session?.user) return null;
 
   // When at a nested admin child (/admin/users etc.), render the child via Outlet.
   // The child pages already include their own AdminShell + guard, so we just outlet.
@@ -81,10 +70,11 @@ function AdminPage() {
         <button
           type="button"
           data-testid="admin-stats-refresh"
-          onClick={() => void fetchStats()}
+          onClick={() => void statsQueryResult.refetch()}
           disabled={refreshing}
           className="inline-flex items-center gap-2 rounded-sm border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-60"
         >
+          <RefreshCwIcon className="h-3.5 w-3.5" aria-hidden="true" />
           Refresh
         </button>
       </div>
@@ -96,7 +86,9 @@ function AdminPage() {
           <p className="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">Users</p>
           <p className="mt-2 text-2xl font-bold">{usersTotal}</p>
           {eftPendingReview > 0 && (
-            <p className="mt-1 text-xs text-zinc-400">{eftPendingReview} pending EFT · quick ops</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {eftPendingReview} EFT payment{eftPendingReview === 1 ? "" : "s"} awaiting review
+            </p>
           )}
         </div>
         <div
@@ -115,10 +107,15 @@ function AdminPage() {
           <p className="text-xs font-semibold tracking-[0.2em] text-zinc-400 uppercase">
             EFT Payments
           </p>
-          <p className="mt-2 text-2xl font-bold">{usersTotal}</p>
+          <p className="mt-2 text-2xl font-bold">{eftPendingReview}</p>
+          {eftPendingReview > 0 && (
+            <p className="mt-1 text-xs text-zinc-400">
+              awaiting review — reconcile to grant credits
+            </p>
+          )}
         </div>
       </div>
-      {/* additional tiles to mirror old overview and provide richer test coverage */}
+      {/* Activity tiles */}
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div
           data-testid="admin-stat-tenders"
@@ -150,32 +147,38 @@ function AdminPage() {
         <a
           href="/admin/users"
           data-testid="admin-quick-users"
-          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 hover:border-zinc-700"
+          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 transition-colors hover:border-teal-500/40"
         >
           <p className="text-xs font-bold tracking-[0.2em] text-zinc-400 uppercase">
             User management
           </p>
-          <p className="mt-2 font-semibold">Manage users →</p>
+          <p className="mt-2 flex items-center gap-1.5 font-semibold">
+            Manage users <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+          </p>
           <p className="mt-1 text-xs text-zinc-400">Impersonate and troubleshoot accounts.</p>
         </a>
         <a
           href="/admin/companies"
           data-testid="admin-quick-companies"
-          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 hover:border-zinc-700"
+          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 transition-colors hover:border-teal-500/40"
         >
           <p className="text-xs font-bold tracking-[0.2em] text-zinc-400 uppercase">
             Company registry
           </p>
-          <p className="mt-2 font-semibold">Manage companies →</p>
+          <p className="mt-2 flex items-center gap-1.5 font-semibold">
+            Manage companies <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+          </p>
           <p className="mt-1 text-xs text-zinc-400">Inspect compliance posture at a glance.</p>
         </a>
         <a
           href="/admin/eft"
           data-testid="admin-quick-eft"
-          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 hover:border-zinc-700"
+          className="rounded-sm border border-zinc-800 bg-zinc-950 p-6 transition-colors hover:border-teal-500/40"
         >
           <p className="text-xs font-bold tracking-[0.2em] text-zinc-400 uppercase">EFT console</p>
-          <p className="mt-2 font-semibold">Review payments →</p>
+          <p className="mt-2 flex items-center gap-1.5 font-semibold">
+            Review payments <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+          </p>
           <p className="mt-1 text-xs text-zinc-400">
             Confirm credits and trigger referral rewards.
           </p>
