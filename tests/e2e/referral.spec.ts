@@ -35,6 +35,7 @@ test.describe("Referrals", () => {
     await page.getByTestId("input-cidb-grade").fill("4GB");
     await page.getByTestId("select-bbbee-level").click();
     await page.getByRole("option", { name: /Level 1/ }).click();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
     // setup auto-redirects to /app ~1.2s after save; wait it out so
@@ -107,6 +108,7 @@ test.describe("Referrals", () => {
     await page.getByTestId("input-cidb-grade").fill("5GB");
     await page.getByTestId("select-bbbee-level").click();
     await page.getByRole("option", { name: /Level 2/ }).click();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
     await page.getByTestId("submit-company-btn").click();
     await expect(page.getByText(/Company profile/)).toBeVisible({ timeout: 10000 });
     // setup auto-redirects to /app ~1.2s after save; wait it out so

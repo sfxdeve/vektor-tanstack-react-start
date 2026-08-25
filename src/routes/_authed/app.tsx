@@ -152,7 +152,7 @@ function AppPage() {
 
   if (companies.length === 0) {
     return (
-      <div className="flex flex-1 flex-col overflow-auto bg-zinc-50">
+      <div className="flex flex-1 flex-col overflow-auto bg-background">
         <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white px-4 py-5 sm:px-8 sm:py-6">
           <p className="overline mb-1 text-zinc-500">Dashboard</p>
           <h1
@@ -227,7 +227,7 @@ function AppPage() {
   const credits = creditsQueryResult.data?.credits;
 
   return (
-    <div className="flex flex-1 flex-col overflow-auto bg-zinc-50">
+    <div className="flex flex-1 flex-col overflow-auto bg-background">
       {/* Solid header — never transparent over scrolled content */}
       <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white px-4 py-5 sm:px-8 sm:py-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -403,8 +403,9 @@ function AppPage() {
                             {MAX_POINTS_BY_SYSTEM[tender.preference_point_system] ?? 20}
                           </TableCell>
                           <TableCell className="px-6 py-4 text-zinc-700">
-                            {tender.risk_flags.length} flag
-                            {tender.risk_flags.length === 1 ? "" : "s"}
+                            {tender.risk_flags.length === 1
+                              ? "1 flag"
+                              : `${tender.risk_flags.length} flags`}
                           </TableCell>
                           <TableCell className="px-6 py-4 text-zinc-600">
                             {new Date(tender.created_at).toLocaleDateString()}

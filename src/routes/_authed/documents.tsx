@@ -444,6 +444,7 @@ function DocumentsPage() {
                 Company
               </FieldLabel>
               <Select
+                items={companies.map((c) => ({ value: c.id, label: c.company_name }))}
                 value={selectedCompanyId ?? ""}
                 onValueChange={(v) => setSelectedId(v as string)}
               >
@@ -485,6 +486,16 @@ function DocumentsPage() {
                       Document Type *
                     </FieldLabel>
                     <Select
+                      items={[
+                        { value: "TAX_PIN", label: "Tax Clearance Pin" },
+                        { value: "COIDA", label: "COIDA Letter of Good Standing" },
+                        { value: "BBBEE", label: "B-BBEE Certificate" },
+                        {
+                          value: "BARGAINING_COUNCIL_GOS",
+                          label: "Bargaining Council Letter of Good Standing",
+                        },
+                        { value: "DIRECTOR_ID", label: "Director ID Copy" },
+                      ]}
                       onValueChange={(value) =>
                         setFormData((prev) => ({ ...prev, doc_type: value as string }))
                       }
@@ -541,6 +552,10 @@ function DocumentsPage() {
                           Which Council is this Letter for? *
                         </FieldLabel>
                         <Select
+                          items={councilCatalog.map((c) => ({
+                            value: c.code,
+                            label: `${c.code.replace(/_/g, " ")} — ${c.name}`,
+                          }))}
                           onValueChange={(value) =>
                             setFormData((prev) => ({
                               ...prev,
@@ -712,6 +727,10 @@ function DocumentsPage() {
                       Compliance Status
                     </FieldLabel>
                     <Select
+                      items={[
+                        { value: "true", label: "Compliant" },
+                        { value: "false", label: "Non-Compliant" },
+                      ]}
                       onValueChange={(value) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -1013,6 +1032,10 @@ function DocumentsPage() {
                   Compliance Status
                 </FieldLabel>
                 <Select
+                  items={[
+                    { value: "true", label: "Compliant" },
+                    { value: "false", label: "Non-Compliant" },
+                  ]}
                   value={editForm.is_compliant ? "true" : "false"}
                   onValueChange={(v) =>
                     setEditForm((p) => ({ ...p, is_compliant: (v as string) === "true" }))
@@ -1037,6 +1060,10 @@ function DocumentsPage() {
                     Bargaining Council
                   </FieldLabel>
                   <Select
+                    items={councilCatalog.map((c) => ({
+                      value: c.code,
+                      label: `${c.code.replace(/_/g, " ")} — ${c.name}`,
+                    }))}
                     value={editForm.bargaining_council ?? ""}
                     onValueChange={(v) =>
                       setEditForm((p) => ({ ...p, bargaining_council: v as string }))

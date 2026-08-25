@@ -462,6 +462,10 @@ function SetupPage() {
                   B-BBEE Level
                 </FieldLabel>
                 <Select
+                  items={[1, 2, 3, 4, 5, 6, 7, 8].map((level) => ({
+                    value: String(level),
+                    label: `Level ${level}`,
+                  }))}
                   onValueChange={(value) => handleChange("bbbee_level", value)}
                   value={formData.bbbee_level}
                 >
@@ -490,6 +494,10 @@ function SetupPage() {
                   Default PPPFA Preference System
                 </FieldLabel>
                 <Select
+                  items={[
+                    { value: "80/20", label: "80/20 System (Standard, up to R50m)" },
+                    { value: "90/10", label: "90/10 System (Above R50m)" },
+                  ]}
                   onValueChange={(value) => handleChange("preferred_pppfa_system", value)}
                   value={formData.preferred_pppfa_system}
                 >

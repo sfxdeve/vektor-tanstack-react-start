@@ -105,7 +105,7 @@ function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="you@company.co.za"
             />
           </Field>

@@ -5,10 +5,12 @@ import { toast } from "sonner";
 
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/auth-client";
 import { apiGet } from "@/lib/api-client";
+import { PasswordStrength } from "@/components/password-strength";
+import { isPasswordAcceptable } from "@/lib/password";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -16,12 +18,6 @@ export const Route = createFileRoute("/signup")({
     ref: (search.ref as string | undefined) ?? undefined,
   }),
 });
-
-function isPasswordAcceptable(password: string, email?: string) {
-  if (password.length < 10) return false;
-  if (email && password.toLowerCase() === email.toLowerCase()) return false;
-  return true;
-}
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -138,7 +134,7 @@ function SignupPage() {
               data-testid="input-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="Rafeeq Fredericks"
             />
           </Field>
@@ -157,7 +153,7 @@ function SignupPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="you@company.co.za"
             />
           </Field>
@@ -176,12 +172,10 @@ function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="A memorable phrase works best"
             />
-            <FieldDescription className="text-zinc-400">
-              At least 10 characters. A 4-word phrase beats a short scrambled password.
-            </FieldDescription>
+            <PasswordStrength password={password} email={email} />
           </Field>
         </FieldGroup>
         <Button

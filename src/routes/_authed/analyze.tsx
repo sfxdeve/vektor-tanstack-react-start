@@ -301,8 +301,9 @@ function AnalyzePage() {
                     Company Profile
                   </FieldLabel>
                   <Select
+                    items={companies.map((c) => ({ value: c.id, label: c.company_name }))}
                     value={selectedCompanyId ?? ""}
-                    onValueChange={(v: string | null) => setSelectedId((v as string) ?? "")}
+                    onValueChange={(v) => setSelectedId((v as string) ?? "")}
                   >
                     <SelectTrigger
                       data-testid="select-company"

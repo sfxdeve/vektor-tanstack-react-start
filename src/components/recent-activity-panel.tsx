@@ -193,8 +193,10 @@ export function RecentActivityPanel({ limit = 8 }: { limit?: number }) {
                 key={tab.key}
                 value={tab.key}
                 data-testid={`activity-tab-${tab.key}`}
-                className={`whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] ${
-                  isActive ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-200/70"
+                className={`whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] data-active:bg-zinc-900 data-active:text-white ${
+                  isActive
+                    ? "bg-zinc-900 text-white hover:bg-zinc-900 hover:text-white"
+                    : "text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                 }`}
               >
                 {tab.label}

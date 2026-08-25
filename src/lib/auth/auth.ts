@@ -67,5 +67,15 @@ export const auth = betterAuth({
   },
   secret: runtimeEnv.BETTER_AUTH_SECRET,
   baseURL: runtimeEnv.BETTER_AUTH_URL ?? runtimeEnv.APP_URL,
+  // `nub run dev` is :5173 and preview/e2e is :4173. Trust both local
+  // origins so cookies and CSRF checks work regardless of which port is up.
+  trustedOrigins: [
+    runtimeEnv.BETTER_AUTH_URL,
+    runtimeEnv.APP_URL,
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+  ].filter((origin): origin is string => Boolean(origin)),
   plugins: [admin(), tanstackStartCookies()],
 });

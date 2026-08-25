@@ -161,7 +161,7 @@ function HelpContent() {
       <section data-testid="help-walkthrough-section">
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-xl font-bold tracking-tight">Static walkthrough — 10 chapters</h2>
-          <span className="text-xs font-semibold tracking-[0.15em] text-zinc-500 uppercase">
+          <span className="text-xs font-semibold tracking-[0.15em] text-zinc-600 uppercase">
             No audio · Captions only
           </span>
         </div>
@@ -213,7 +213,7 @@ function HelpContent() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-zinc-600">
           Each chapter pairs a slide with a short caption — read the walkthrough at your own pace.
         </p>
       </section>
@@ -399,7 +399,7 @@ function HelpContent() {
                     >
                       MEIBC — Mechanical / HVAC
                     </a>
-                    <div className="mt-0.5 text-xs text-zinc-500">
+                    <div className="mt-0.5 text-xs text-zinc-600">
                       HVAC also needs SARACCA + SAQCC Gas registration
                     </div>
                   </TableCell>
@@ -627,7 +627,7 @@ function HelpPage() {
   if (isPending) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+        <div className="text-sm font-semibold tracking-[0.2em] text-zinc-600 uppercase">
           Loading…
         </div>
       </div>
@@ -678,12 +678,12 @@ function HelpPage() {
           }
         >
           <AppSidebar />
-          <SidebarInset className="min-w-0 bg-zinc-50">
+          <SidebarInset className="min-w-0 bg-background">
             <header
               data-testid="help-header-authed"
               className="sticky top-0 z-10 border-b border-zinc-200 bg-white px-4 py-5 sm:px-8 sm:py-6"
             >
-              <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+              <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.2em] text-zinc-600 uppercase">
                 <span aria-hidden>?</span> Help &amp; Guides
               </div>
               <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
@@ -708,7 +708,7 @@ function HelpPage() {
       <main>
         <div className="border-b border-zinc-200 bg-white">
           <div className="mx-auto max-w-6xl px-6 py-10 sm:py-14">
-            <p className="text-xs font-semibold tracking-[0.2em] text-zinc-500 uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-zinc-600 uppercase">
               Help &amp; Guides
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">

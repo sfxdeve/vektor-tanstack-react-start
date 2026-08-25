@@ -6,6 +6,7 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { PasswordStrength } from "@/components/password-strength";
 import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/reset-password")({
@@ -108,9 +109,10 @@ function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="A memorable phrase works best"
             />
+            <PasswordStrength password={password} />
           </Field>
           <Field>
             <FieldLabel
@@ -127,7 +129,7 @@ function ResetPasswordPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="Repeat your new password"
             />
           </Field>

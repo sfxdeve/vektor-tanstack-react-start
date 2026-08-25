@@ -2,8 +2,10 @@
 # Copy to .dev.vars and fill in values. Never commit .dev.vars with real secrets.
 
 BETTER_AUTH_SECRET="development-secret-key-at-least-32-chars-long"
-BETTER_AUTH_URL="http://127.0.0.1:4173"
-APP_URL="http://127.0.0.1:4173"
+# Preview/e2e default is :4173. `nub run dev` is :5173 — both origins are
+# trusted in src/lib/auth/auth.ts so either port works locally.
+BETTER_AUTH_URL="http://127.0.0.1:5173"
+APP_URL="http://127.0.0.1:5173"
 
 # Captures outgoing email in the in-memory dev mailbox (/api/dev/mailbox)
 # instead of sending it. Local development and e2e only — never set this in

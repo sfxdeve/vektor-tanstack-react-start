@@ -250,6 +250,7 @@ function BillingPage() {
                 Company
               </FieldLabel>
               <Select
+                items={companies.map((c) => ({ value: c.id, label: c.company_name }))}
                 value={selectedCompany.id}
                 onValueChange={(v) => setSelectedCompanyId(v as string)}
               >

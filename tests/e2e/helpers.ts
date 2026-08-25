@@ -9,6 +9,13 @@ import { expect, type Page } from "@playwright/test";
  * has settled on either destination — dashboard or the setup form — and only
  * then navigates explicitly when needed.
  */
+/** Pick a select option and wait for the popup to unmount so it cannot steal clicks. */
+export async function chooseSelectOption(page: Page, triggerTestId: string, name: RegExp) {
+  await page.getByTestId(triggerTestId).click();
+  await page.getByRole("option", { name }).click();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+}
+
 export async function ensureCompanySetup(page: Page): Promise<void> {
   await expect(
     page.getByTestId("dashboard-title").or(page.getByTestId("company-form-card")),

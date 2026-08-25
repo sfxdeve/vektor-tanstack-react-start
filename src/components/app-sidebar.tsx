@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -125,22 +126,26 @@ function UserFooter() {
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56 rounded-sm">
-          <DropdownMenuLabel className="text-xs tracking-[0.15em] uppercase">
-            Signed in as
-          </DropdownMenuLabel>
-          <p className="truncate px-1.5 pb-1 text-xs text-muted-foreground">{user.email}</p>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="text-xs tracking-[0.15em] uppercase">
+              Signed in as
+            </DropdownMenuLabel>
+            <p className="truncate px-1.5 pb-1 text-xs text-muted-foreground">{user.email}</p>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            data-testid="btn-signout"
-            onClick={async () => {
-              await authClient.signOut();
-              toast.success("Signed out");
-              await navigate({ to: "/login", search: {} });
-            }}
-          >
-            <LogOutIcon aria-hidden="true" />
-            Sign out
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              data-testid="btn-signout"
+              onClick={async () => {
+                await authClient.signOut();
+                toast.success("Signed out");
+                await navigate({ to: "/login", search: {} });
+              }}
+            >
+              <LogOutIcon aria-hidden="true" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

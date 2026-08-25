@@ -54,7 +54,7 @@ function AuthedLayout() {
         }
       >
         <AppSidebar />
-        <SidebarInset className="min-w-0 bg-zinc-50">
+        <SidebarInset className="min-w-0 bg-background">
           <Outlet />
         </SidebarInset>
       </SidebarProvider>

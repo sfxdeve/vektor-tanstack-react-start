@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Clock,
   FileText,
+  Menu,
   ShieldCheck,
 } from "lucide-react";
 
@@ -21,6 +22,14 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { asVektorSession, authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/")({
@@ -62,6 +71,14 @@ function LandingPage() {
   );
 }
 
+const LANDING_NAV = [
+  { href: "#features", label: "Features", testId: "landing-nav-features" },
+  { href: "#how-it-works", label: "How it works", testId: "landing-nav-how-it-works" },
+  { href: "#pricing", label: "Pricing", testId: "landing-nav-pricing" },
+  { href: "#partners", label: "Partners", testId: "landing-nav-partners" },
+  { href: "#faq", label: "FAQ", testId: "landing-nav-faq" },
+] as const;
+
 // ============ Top Nav ============
 const TopNav = () => (
   <header
@@ -74,37 +91,16 @@ const TopNav = () => (
         <span className="text-xl font-bold tracking-tight">Vektor</span>
       </Link>
       <nav className="hidden items-center gap-8 text-sm text-zinc-300 md:flex">
-        <a
-          href="#features"
-          data-testid="landing-nav-features"
-          className="transition-colors hover:text-white"
-        >
-          Features
-        </a>
-        <a
-          href="#how-it-works"
-          data-testid="landing-nav-how-it-works"
-          className="transition-colors hover:text-white"
-        >
-          How it works
-        </a>
-        <a
-          href="#pricing"
-          data-testid="landing-nav-pricing"
-          className="transition-colors hover:text-white"
-        >
-          Pricing
-        </a>
-        <a
-          href="#partners"
-          data-testid="landing-nav-partners"
-          className="transition-colors hover:text-white"
-        >
-          Partners
-        </a>
-        <a href="#faq" data-testid="landing-nav-faq" className="transition-colors hover:text-white">
-          FAQ
-        </a>
+        {LANDING_NAV.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            data-testid={item.testId}
+            className="transition-colors hover:text-white"
+          >
+            {item.label}
+          </a>
+        ))}
         <Link
           to="/about"
           data-testid="landing-nav-about"
@@ -118,17 +114,92 @@ const TopNav = () => (
           to="/login"
           search={{}}
           data-testid="landing-signin"
-          className="text-sm font-semibold text-zinc-300 transition-colors hover:text-white"
+          className="hidden text-sm font-semibold text-zinc-300 transition-colors hover:text-white sm:inline"
         >
           Sign in
         </Link>
         <Button
           render={<Link to="/signup" search={{ ref: undefined }} data-testid="landing-cta-nav" />}
-          className="rounded-sm bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400"
+          className="hidden rounded-sm bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400 sm:inline-flex"
         >
           Start free
           <ArrowRight aria-hidden="true" />
         </Button>
+        <Sheet>
+          <SheetTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                data-testid="landing-mobile-menu"
+                aria-label="Open menu"
+                className="text-zinc-200 hover:bg-zinc-800 hover:text-white md:hidden"
+              />
+            }
+          >
+            <Menu aria-hidden="true" />
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-72 border-zinc-800 bg-zinc-950 text-zinc-100"
+            data-testid="landing-mobile-sheet"
+          >
+            <SheetHeader>
+              <SheetTitle className="text-white">Vektor</SheetTitle>
+            </SheetHeader>
+            <nav className="flex flex-col gap-1 px-4">
+              {LANDING_NAV.map((item) => (
+                <SheetClose
+                  key={item.href}
+                  render={
+                    <a
+                      href={item.href}
+                      data-testid={`${item.testId}-mobile`}
+                      className="rounded-sm px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                    >
+                      {item.label}
+                    </a>
+                  }
+                />
+              ))}
+              <SheetClose
+                render={
+                  <Link
+                    to="/about"
+                    data-testid="landing-nav-about-mobile"
+                    className="rounded-sm px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                  >
+                    About
+                  </Link>
+                }
+              />
+              <SheetClose
+                render={
+                  <Link
+                    to="/login"
+                    search={{}}
+                    data-testid="landing-signin-mobile"
+                    className="rounded-sm px-3 py-2.5 text-sm font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+                  >
+                    Sign in
+                  </Link>
+                }
+              />
+              <SheetClose
+                render={
+                  <Link
+                    to="/signup"
+                    search={{ ref: undefined }}
+                    data-testid="landing-cta-mobile"
+                    className="mt-2 rounded-sm bg-teal-500 px-3 py-2.5 text-center text-sm font-bold text-zinc-950 hover:bg-teal-400"
+                  >
+                    Start free
+                  </Link>
+                }
+              />
+            </nav>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   </header>
@@ -162,7 +233,7 @@ const Hero = () => (
           <span className="inline-block h-px w-6 bg-teal-400" />
           SA Tender Compliance · Built for contractors
         </p>
-        <h1 className="text-5xl leading-[1.02] font-black tracking-tight lg:text-7xl">
+        <h1 className="text-5xl leading-[1.02] font-black tracking-tight">
           Never lose a bid on a<span className="text-teal-400"> technicality</span> again.
         </h1>
         <p className="mt-8 max-w-xl text-lg leading-relaxed text-zinc-400 lg:text-xl">
@@ -205,7 +276,7 @@ const Hero = () => (
 
       {/* Live-looking product mockup — pure CSS, no stock imagery */}
       <div className="relative" data-testid="landing-hero-visual">
-        <div className="relative overflow-hidden rounded-md border border-zinc-800 bg-zinc-900 shadow-2xl shadow-teal-500/5">
+        <div className="relative overflow-hidden rounded-sm border border-zinc-800 bg-zinc-900 shadow-2xl shadow-teal-500/5">
           <div className="flex items-center gap-1.5 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
             <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
             <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
@@ -247,7 +318,7 @@ const Hero = () => (
           </div>
         </div>
         {/* Floating notification card */}
-        <div className="absolute -bottom-6 -left-6 hidden max-w-xs rounded-md border border-zinc-800 bg-zinc-950 p-4 shadow-2xl lg:block">
+        <div className="absolute -bottom-6 -left-6 hidden max-w-xs rounded-sm border border-zinc-800 bg-zinc-950 p-4 shadow-2xl lg:block">
           <div className="flex items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-amber-500/30 bg-amber-500/10">
               <Bell className="h-4 w-4 text-amber-400" aria-hidden="true" />
@@ -352,7 +423,7 @@ const FeaturesSection = () => (
           <div
             key={f.title}
             data-testid={`landing-feature-${f.title.toLowerCase().replace(/[^a-z]+/g, "-")}`}
-            className="group rounded-md border border-zinc-800 bg-zinc-900/40 p-6 transition-colors hover:border-teal-500/50 hover:bg-zinc-900/80"
+            className="group rounded-sm border border-zinc-800 bg-zinc-900/40 p-6 transition-colors hover:border-teal-500/50 hover:bg-zinc-900/80"
           >
             <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-sm border border-teal-500/30 bg-teal-500/10 transition-colors group-hover:bg-teal-500/20">
               <f.icon className="h-5 w-5 text-teal-400" aria-hidden="true" />
@@ -401,7 +472,7 @@ const HowItWorks = () => (
           <div
             key={step.n}
             data-testid={`landing-step-${step.n}`}
-            className="grid items-start gap-4 rounded-md border border-zinc-800 bg-zinc-950 p-6 lg:grid-cols-[120px_1fr] lg:gap-10 lg:p-8"
+            className="grid items-start gap-4 rounded-sm border border-zinc-800 bg-zinc-950 p-6 lg:grid-cols-[120px_1fr] lg:gap-10 lg:p-8"
           >
             <p aria-hidden="true" className="text-5xl font-black text-teal-400/70 lg:text-6xl">
               {step.n}
@@ -430,7 +501,7 @@ const ProductProofSection = () => (
   <section className="bg-zinc-950 py-24 lg:py-32" data-testid="landing-proof">
     <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-2 lg:gap-24 lg:px-10">
       <div className="order-2 lg:order-1">
-        <div className="rounded-md border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+        <div className="rounded-sm border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
           <p className="mb-4 text-[9px] font-semibold tracking-[0.2em] text-zinc-400 uppercase">
             Document Vault · Expiry Timeline
           </p>
@@ -459,7 +530,7 @@ const ProductProofSection = () => (
                     </span>
                   </div>
                   <Progress
-                    value={row.days}
+                    value={Math.min(100, Math.round((row.days / 90) * 100))}
                     aria-label={`${row.doc} expires in ${row.days} days`}
                     className="h-1 gap-0"
                   >
@@ -558,7 +629,7 @@ const PricingSection = () => (
           <div
             key={p.name}
             data-testid={`pricing-card-${p.testId}`}
-            className={`relative rounded-md border p-7 ${
+            className={`relative rounded-sm border p-7 ${
               p.highlight ? "border-teal-500 bg-teal-500/5" : "border-zinc-800 bg-zinc-950"
             }`}
           >
@@ -683,7 +754,7 @@ const PartnersSection = () => (
           <div
             key={p.name}
             data-testid={`landing-partner-${p.name.replace(/\s+/g, "-").toLowerCase()}`}
-            className="overflow-hidden rounded-md border border-zinc-800 bg-zinc-900/60"
+            className="overflow-hidden rounded-sm border border-zinc-800 bg-zinc-900/60"
           >
             <PartnerLogo logo={p.logo} initials={p.fallbackInitials} />
             <div className="p-6">
@@ -779,7 +850,7 @@ const FaqSection = () => (
 const FinalCta = () => (
   <section className="bg-zinc-950 py-24 lg:py-32" data-testid="landing-final-cta">
     <div className="mx-auto max-w-5xl px-6 lg:px-10">
-      <div className="relative overflow-hidden rounded-md border border-teal-500/30 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 p-10 lg:p-14">
+      <div className="relative overflow-hidden rounded-sm border border-teal-500/30 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 p-10 lg:p-14">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-30"

@@ -65,20 +65,26 @@ function LoginPage() {
       subtitle="Welcome back to Vektor."
       eyebrow="Catch expired documents and missed forms before they cost you a bid."
     >
-      <Link to="/signup" search={{ ref: undefined }} data-testid="link-signup" className="block">
-        <Button
-          type="button"
-          data-testid="cta-create-account"
-          size="lg"
-          className="w-full bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400"
-        >
-          Create free account
-          <span className="ml-2">→</span>
-        </Button>
-      </Link>
+      <Button
+        render={<Link to="/signup" search={{ ref: undefined }} data-testid="link-signup" />}
+        data-testid="cta-create-account"
+        size="lg"
+        className="w-full bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400"
+      >
+        Create free account
+        <span className="ml-2">→</span>
+      </Button>
       <p className="mt-3 text-[11px] font-semibold tracking-[0.15em] text-zinc-400 uppercase">
         1 tender analysis free · no card required
       </p>
+
+      <div className="my-6 flex items-center gap-3" aria-hidden="true">
+        <div className="h-px flex-1 bg-zinc-800" />
+        <span className="text-[10px] font-semibold tracking-[0.2em] text-zinc-400 uppercase">
+          Or with email
+        </span>
+        <div className="h-px flex-1 bg-zinc-800" />
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-4" data-testid="login-form">
         <FieldGroup>
@@ -97,7 +103,7 @@ function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="you@company.co.za"
             />
           </Field>
@@ -125,7 +131,7 @@ function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
               placeholder="••••••••"
             />
           </Field>

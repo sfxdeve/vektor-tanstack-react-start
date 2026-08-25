@@ -68,11 +68,15 @@ function AboutPage() {
             >
               Sign in
             </Link>
-            <Link to="/signup" search={{ ref: undefined }} data-testid="about-signup-link">
-              <Button size="sm" className="bg-zinc-900 text-white hover:bg-zinc-800">
-                Create free account
-              </Button>
-            </Link>
+            <Button
+              render={
+                <Link to="/signup" search={{ ref: undefined }} data-testid="about-signup-link" />
+              }
+              size="sm"
+              className="bg-zinc-900 text-white hover:bg-zinc-800"
+            >
+              Create free account
+            </Button>
           </div>
         </div>
       </header>
@@ -414,26 +418,26 @@ function AboutPage() {
               Start with 1 free tender analysis on signup. No card required.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link to="/signup" search={{ ref: undefined }} data-testid="about-cta-signup">
-                <Button
-                  size="lg"
-                  className="w-full bg-zinc-900 text-white hover:bg-zinc-800 sm:w-auto"
-                >
-                  Create free account{" "}
-                  <span aria-hidden className="ml-2">
-                    →
-                  </span>
-                </Button>
-              </Link>
-              <Link to="/login" search={{}} data-testid="about-cta-login">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full border-zinc-300 text-zinc-900 hover:bg-zinc-100 sm:w-auto"
-                >
-                  Sign in
-                </Button>
-              </Link>
+              <Button
+                render={
+                  <Link to="/signup" search={{ ref: undefined }} data-testid="about-cta-signup" />
+                }
+                size="lg"
+                className="w-full bg-zinc-900 text-white hover:bg-zinc-800 sm:w-auto"
+              >
+                Create free account{" "}
+                <span aria-hidden className="ml-2">
+                  →
+                </span>
+              </Button>
+              <Button
+                render={<Link to="/login" search={{}} data-testid="about-cta-login" />}
+                size="lg"
+                variant="outline"
+                className="w-full border-zinc-300 text-zinc-900 hover:bg-zinc-100 sm:w-auto"
+              >
+                Sign in
+              </Button>
             </div>
             <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold tracking-[0.15em] text-zinc-500 uppercase">
               <SearchIcon aria-hidden="true" /> Built for South African contractors
