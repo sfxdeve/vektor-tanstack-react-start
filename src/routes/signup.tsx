@@ -1,0 +1,200 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, GiftIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { AuthShell } from "@/components/auth-shell";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { authClient } from "@/lib/auth/auth-client";
+import { apiGet } from "@/lib/api-client";
+
+export const Route = createFileRoute("/signup")({
+  component: SignupPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    ref: (search.ref as string | undefined) ?? undefined,
+  }),
+});
+
+function isPasswordAcceptable(password: string, email?: string) {
+  if (password.length < 10) return false;
+  if (email && password.toLowerCase() === email.toLowerCase()) return false;
+  return true;
+}
+
+function SignupPage() {
+  const navigate = useNavigate();
+  const search = Route.useSearch();
+  const refCode = (search as { ref?: string }).ref ?? null;
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [refPreview, setRefPreview] = useState<{
+    referrer_first_name: string;
+    referrer_company?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!refCode) return;
+    // Attempt lookup but never block signup if it fails or code is invalid
+    apiGet<{ referrer_first_name: string; referrer_company?: string }>(
+      `/api/referrals/lookup?code=${encodeURIComponent(refCode)}`,
+    )
+      .then((d) => {
+        if (d?.referrer_first_name) setRefPreview(d);
+      })
+      .catch(() => setRefPreview(null));
+  }, [refCode]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPasswordAcceptable(password, email)) {
+      toast.error("Please pick a stronger password (at least 10 characters).");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // Attribution: referredByCode rides along with the signup; the auth
+      // after-hook creates the referrals audit row server-side.
+      const normalizedRef = refCode ? refCode.trim().toUpperCase() : undefined;
+      await authClient.signUp.email(
+        {
+          email: email.trim(),
+          password,
+          name: name.trim() || (email.split("@")[0] ?? email),
+          ...(normalizedRef ? { referredByCode: normalizedRef } : {}),
+        },
+        {
+          onError: (ctx) => {
+            toast.error(ctx.error.message || "Signup failed");
+            throw new Error(ctx.error.message);
+          },
+        },
+      );
+      toast.success("Account created — welcome to Vektor");
+      await navigate({ to: "/app" });
+    } catch {
+      // the failure toast was already surfaced by the auth client callback
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <AuthShell
+      title="Create your account"
+      subtitle="Start with 1 free tender analysis. No credit card."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            search={{}}
+            data-testid="link-login"
+            className="font-semibold text-teal-400 underline underline-offset-2 transition-colors hover:text-teal-300"
+          >
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      {refPreview && (
+        <div
+          data-testid="signup-referral-banner"
+          className="mb-6 flex items-start gap-3 rounded-sm border border-teal-500/40 bg-teal-500/10 p-4"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-teal-500/40 bg-teal-500/20">
+            <GiftIcon className="h-4 w-4 text-teal-300" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="mb-0.5 text-xs font-bold tracking-[0.15em] text-teal-300 uppercase">
+              You&apos;ve been invited
+            </p>
+            <p className="text-sm leading-snug text-white">
+              <span className="font-bold">{refPreview.referrer_first_name}</span>
+              {refPreview.referrer_company && (
+                <span className="text-zinc-400"> at {refPreview.referrer_company}</span>
+              )}{" "}
+              invited you to try Vektor. Get{" "}
+              <strong className="text-teal-300">1 free tender analysis</strong> to see how it works
+              — no credit card required.
+            </p>
+          </div>
+        </div>
+      )}
+      <form onSubmit={onSubmit} className="space-y-4" data-testid="signup-form">
+        <FieldGroup>
+          <Field>
+            <FieldLabel
+              htmlFor="name"
+              className="text-xs font-semibold tracking-[0.1em] text-zinc-300 uppercase"
+            >
+              Your name
+            </FieldLabel>
+            <Input
+              id="name"
+              data-testid="input-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              placeholder="Rafeeq Fredericks"
+            />
+          </Field>
+          <Field>
+            <FieldLabel
+              htmlFor="email"
+              className="text-xs font-semibold tracking-[0.1em] text-zinc-300 uppercase"
+            >
+              Work email
+            </FieldLabel>
+            <Input
+              id="email"
+              data-testid="input-email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              placeholder="you@company.co.za"
+            />
+          </Field>
+          <Field>
+            <FieldLabel
+              htmlFor="password"
+              className="text-xs font-semibold tracking-[0.1em] text-zinc-300 uppercase"
+            >
+              Password
+            </FieldLabel>
+            <Input
+              id="password"
+              data-testid="input-password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              placeholder="A memorable phrase works best"
+            />
+            <FieldDescription className="text-zinc-400">
+              At least 10 characters. A 4-word phrase beats a short scrambled password.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
+        <Button
+          type="submit"
+          data-testid="submit-signup"
+          disabled={submitting}
+          size="lg"
+          className="w-full bg-teal-500 font-bold text-zinc-950 hover:bg-teal-400"
+        >
+          {submitting ? "Creating account…" : "Create account & start free"}
+          {!submitting && <ArrowRight className="ml-2" aria-hidden="true" />}
+        </Button>
+      </form>
+    </AuthShell>
+  );
+}

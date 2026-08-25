@@ -1,0 +1,15 @@
+# Canonical VEKTOR port notes — 2026-08-24
+
+Primary-source decisions used by the port integrity pass. This is implementation evidence, not proof of a production deployment or preview smoke.
+
+- **TanStack Start on Workers:** use a custom Worker entry only when adding another handler, and compose TanStack's fetch handler with `scheduled` in one default export. Cloudflare framework guide and custom-entry docs: <https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/> and <https://developers.cloudflare.com/workers/vite-plugin/reference/worker-entrypoints/>.
+- **Workers compatibility:** compatibility dates on or after 2026-08-04 enable Node compatibility by default, so this repo omits `nodejs_compat`: <https://developers.cloudflare.com/changelog/post/2026-08-04-nodejs-compat-default/> and <https://developers.cloudflare.com/workers/runtime-apis/nodejs/>.
+- **D1:** `batch()` executes the submitted statements as one transaction and rolls the sequence back on failure. Domain transitions still use compare-and-set claims so only the winning batch has dependent effects: <https://developers.cloudflare.com/d1/worker-api/d1-database/#batch>.
+- **AI Gateway:** OpenAI-compatible paths include account ID and gateway ID. The adapter base is `https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai`: <https://developers.cloudflare.com/ai-gateway/usage/providers/openai/>.
+- **OpenAI structured output:** the official JavaScript SDK's Responses parser plus Zod helper validates strict structured output instead of casting model JSON: <https://github.com/openai/openai-node#structured-outputs> and <https://platform.openai.com/docs/guides/structured-outputs>.
+- **R2:** private object responses preserve HTTP metadata, ETag, conditional requests, and byte ranges through the Worker API: <https://developers.cloudflare.com/r2/api/workers/workers-api-reference/> and <https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#r2getoptions>.
+- **Better Auth:** email/password reset delivery is configured with `sendResetPassword`; the TanStack cookie plugin remains last. Workers background work uses the importable `waitUntil`: <https://www.better-auth.com/docs/authentication/email-password>, <https://www.better-auth.com/docs/integrations/tanstack>, and <https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil>.
+- **UI:** the setup multi-select should use the shadcn CLI-provided Base UI Combobox rather than a second local primitive: <https://ui.shadcn.com/docs/components/base/combobox>.
+- **PDFs:** `unpdf` supplies serverless PDF text extraction and `pdf-lib` supplies Workers-compatible document generation: <https://github.com/unjs/unpdf> and <https://pdf-lib.js.org/>.
+
+Operational consequences: keep Router 1.170.29 because it is the direct Start 1.168.46 dependency; keep cron `0 6 * * *` because Cloudflare cron uses UTC and 06:00 UTC is 08:00 SAST; configure `AI_GATEWAY_ID` and `CLOUDFLARE_ACCOUNT_ID` together; keep R2 private; never expose an HTTP role-promotion fixture.

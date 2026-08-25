@@ -19,10 +19,22 @@ nub run dev
 - `nub run deploy:preview` uploads a Cloudflare preview version.
 - `nub run cf-typegen` generates Cloudflare runtime and binding types.
 - `nub run check` runs type checking, linting, formatting, unit tests, e2e tests, and the build.
+- `nub run reset:d1` wipes local D1 state and re-applies migrations (run automatically
+  before e2e so gate runs are deterministic; dev data is disposable).
+- `nub run seed:admin` creates the first admin account against a running dev server
+  (`ADMIN_EMAIL`/`ADMIN_PASSWORD` env required — see `scripts/seed-admin.ts`).
 - `nub run clean` removes generated output.
 
 The scaffold uses shadcn/ui with Base UI primitives and the `base-nova` preset. Add components with:
 
 ```bash
-nubx shadcn add button
+nubx shadcn@latest add button --yes
 ```
+
+## Porting reference & asset policy
+
+The old VEKTOR codebase at `~/Developer/VEKTOR` (FastAPI `backend/`, CRA `frontend/`, `design_guidelines.json`, `logo_exports/`) is the functional spec for this port. Looking up layout, copy, validation rules, and component structure in the old repo (`frontend/src/pages`, `src/components`, `src/App.js`, `backend/routes`, `design_guidelines.json` `image_urls`) while porting is **allowed and encouraged**. Copy required assets (fonts via Fontshare/Google, `logo_exports/` logos, `frontend/public/logo`, `help-slides/`, `partners/`, blueprint image from `design_guidelines.json`) into `public/` when needed — do not hotlink Pexels in production.
+
+## Design system
+
+Swiss high-contrast, Zinc neutrals (`#F4F4F5` background / `#FFFFFF` surface / `#09090B` primary / `#71717A` secondary — darkened to `#52525B` for WCAG 2AA on `#F4F4F5` / `#E4E4E7` border), status `#DC2626` / `#D97706` / `#16A34A` / `#2563EB`, `Cabinet Grotesk` headings (tracking-tight, `text-5xl` max) + `IBM Plex Sans` body, high-density grid `grid-cols-1 md:grid-cols-3 lg:grid-cols-4`, generous `p-6`/`p-8`, grid borders `border-r border-b`, sharp `rounded-sm` (4px), flat 1px cards with `-translate-y-1` + `shadow-sm` hover, sonner bottom-right.

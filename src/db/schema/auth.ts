@@ -1,14 +1,31 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-export const user = sqliteTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: integer("emailVerified", { mode: "boolean" }).notNull().default(false),
-  image: text("image"),
-  createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
-});
+export const user = sqliteTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: integer("emailVerified", { mode: "boolean" }).notNull().default(false),
+    image: text("image"),
+    role: text("role", { enum: ["admin", "user"] })
+      .notNull()
+      .default("user"),
+    banned: integer("banned", { mode: "boolean" }).default(false),
+    banReason: text("banReason"),
+    banExpires: integer("banExpires", { mode: "timestamp" }),
+    referralCode: text("referralCode"),
+    referredByUserId: text("referredByUserId"),
+    referredByCode: text("referredByCode"),
+    referredAt: integer("referredAt", { mode: "timestamp" }),
+    createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    index("user_role_idx").on(t.role),
+    uniqueIndex("user_referral_code_unique").on(t.referralCode),
+  ],
+);
 
 export const session = sqliteTable("session", {
   id: text("id").primaryKey(),
@@ -21,6 +38,7 @@ export const session = sqliteTable("session", {
   userId: text("userId")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  impersonatedBy: text("impersonatedBy"),
 });
 
 export const account = sqliteTable(

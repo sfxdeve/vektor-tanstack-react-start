@@ -4,6 +4,10 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { HelpFab } from "@/components/help-fab";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import styles from "@/styles.css?url";
 
 interface RouterContext {
@@ -30,7 +34,11 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <TooltipProvider>
+          {children}
+          <HelpFab />
+          <Toaster position="bottom-right" />
+        </TooltipProvider>
         {import.meta.env.DEV ? (
           <TanStackDevtools
             config={{ position: "bottom-right" }}
@@ -54,7 +62,11 @@ function NotFound() {
       <div className="text-center">
         <p className="text-muted-foreground text-sm">404</p>
         <h1 className="mt-2 text-2xl font-semibold">Page not found</h1>
-        <a className="text-primary mt-4 inline-block underline underline-offset-4" href="/">
+        <a
+          data-testid="not-found-home"
+          className="text-primary mt-4 inline-block underline underline-offset-4"
+          href="/"
+        >
           Return home
         </a>
       </div>

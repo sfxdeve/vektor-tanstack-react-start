@@ -1,30 +1,71 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { waitUntil } from "cloudflare:workers";
 
 import { createDb } from "@/db";
 import * as schema from "@/db/schema";
+import { ensureReferralCode, recordSignup } from "@/lib/referral";
+import { sendViaResend } from "@/lib/reminder";
+import { buildPasswordResetHtml } from "@/lib/reminder-template";
+import { runtimeEnv } from "@/lib/runtime-env";
 
-export interface CreateAuthOptions {
-  baseURL?: string;
-  secret?: string;
-}
+const db = createDb(runtimeEnv.DB);
 
-export function createAuth(d1: D1Database, options?: CreateAuthOptions) {
-  const db = createDb(d1);
-
-  return betterAuth({
-    database: drizzleAdapter(db, {
-      provider: "sqlite",
-      schema,
-    }),
-    emailAndPassword: {
-      enabled: true,
+/** The only application auth instance, bound to the Worker's D1 binding. */
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: "sqlite", schema }),
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (createdUser) => {
+          try {
+            await ensureReferralCode(db, createdUser.id);
+          } catch {
+            // Referral codes are recoverable through the referral dashboard.
+          }
+          const code =
+            typeof createdUser.referredByCode === "string" ? createdUser.referredByCode : undefined;
+          if (code) {
+            try {
+              await recordSignup(db, createdUser.id, createdUser.email, code, runtimeEnv.DB);
+            } catch {
+              // Attribution must never prevent account creation.
+            }
+          }
+        },
+      },
     },
-    secret: options?.secret ?? process.env.BETTER_AUTH_SECRET,
-    baseURL: options?.baseURL ?? process.env.BETTER_AUTH_URL,
-    plugins: [tanstackStartCookies()],
-  });
-}
-
-export type Auth = ReturnType<typeof createAuth>;
+  },
+  user: {
+    additionalFields: {
+      role: { type: "string", required: false, defaultValue: "user", input: false },
+      referralCode: { type: "string", required: false, input: false },
+      referredByUserId: { type: "string", required: false, input: false },
+      referredByCode: { type: "string", required: false, input: true },
+    },
+  },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 10,
+    maxPasswordLength: 128,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      const appUrl = (runtimeEnv.APP_URL || runtimeEnv.BETTER_AUTH_URL || "").replace(/\/$/, "");
+      const delivery = sendViaResend(
+        runtimeEnv,
+        user.email,
+        "[Vektor] Reset your password",
+        buildPasswordResetHtml({ url, appUrl }),
+        { type: "reset-password", raw: { type: "reset-password", url } },
+      ).catch((error) => {
+        console.error("Password reset email delivery failed", error);
+      });
+      waitUntil(delivery);
+    },
+  },
+  secret: runtimeEnv.BETTER_AUTH_SECRET,
+  baseURL: runtimeEnv.BETTER_AUTH_URL ?? runtimeEnv.APP_URL,
+  plugins: [admin(), tanstackStartCookies()],
+});
