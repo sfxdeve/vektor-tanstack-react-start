@@ -37,7 +37,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <TooltipProvider>
           {children}
           <HelpFab />
-          <Toaster position="bottom-right" />
+          <Toaster position="bottom-right" offset={{ bottom: 88, right: 24 }} />
         </TooltipProvider>
         {import.meta.env.DEV ? (
           <TanStackDevtools

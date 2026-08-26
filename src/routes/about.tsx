@@ -88,7 +88,7 @@ function AboutPage() {
             <p className="mb-4 text-[11px] font-bold tracking-[0.25em] text-teal-400 uppercase">
               About Vektor
             </p>
-            <h1 className="text-4xl leading-[1.05] font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl leading-[1.05] font-bold tracking-tight sm:text-5xl">
               Why We Built <span className="text-teal-400">Vektor</span>
             </h1>
             <p className="mt-8 max-w-3xl text-lg leading-relaxed text-zinc-300">

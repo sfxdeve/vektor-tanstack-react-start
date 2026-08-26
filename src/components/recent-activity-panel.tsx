@@ -183,7 +183,7 @@ export function RecentActivityPanel({ limit = 8 }: { limit?: number }) {
       <Tabs value={activeTabKey} onValueChange={setActiveTabKey}>
         <TabsList
           aria-label="Activity filter"
-          className="flex w-full items-center gap-1 overflow-x-auto rounded-none border-b border-zinc-200 bg-zinc-50/60 px-3 py-2"
+          className="flex h-auto w-full items-center justify-start gap-1 overflow-x-auto rounded-none border-b border-zinc-200 bg-zinc-50/60 p-2"
           data-testid="activity-filter-tabs"
         >
           {ACTIVITY_TABS.map((tab) => {
@@ -193,7 +193,7 @@ export function RecentActivityPanel({ limit = 8 }: { limit?: number }) {
                 key={tab.key}
                 value={tab.key}
                 data-testid={`activity-tab-${tab.key}`}
-                className={`whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] data-active:bg-zinc-900 data-active:text-white ${
+                className={`flex-none whitespace-nowrap rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.1em] data-active:bg-zinc-900 data-active:text-white ${
                   isActive
                     ? "bg-zinc-900 text-white hover:bg-zinc-900 hover:text-white"
                     : "text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"

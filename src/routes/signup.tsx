@@ -3,7 +3,7 @@ import { ArrowRight, GiftIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { AuthShell } from "@/components/auth-shell";
+import { AUTH_INPUT_CLASS, AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -134,7 +134,7 @@ function SignupPage() {
               data-testid="input-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className={AUTH_INPUT_CLASS}
               placeholder="Rafeeq Fredericks"
             />
           </Field>
@@ -153,7 +153,7 @@ function SignupPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className={AUTH_INPUT_CLASS}
               placeholder="you@company.co.za"
             />
           </Field>
@@ -172,7 +172,7 @@ function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
+              className={AUTH_INPUT_CLASS}
               placeholder="A memorable phrase works best"
             />
             <PasswordStrength password={password} email={email} />

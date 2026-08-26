@@ -3,6 +3,10 @@ import type { ReactNode } from "react";
 
 import { VektorMark } from "@/components/vektor-mark";
 
+/** Dark-auth field chrome. Placeholder + autofill stay WCAG AA on zinc-950. */
+export const AUTH_INPUT_CLASS =
+  "rounded-sm border-zinc-800 !bg-zinc-950 text-white placeholder:!text-zinc-300 focus-visible:border-teal-500 focus-visible:ring-teal-500/20 dark:!bg-zinc-950 [&:-webkit-autofill]:[-webkit-text-fill-color:#fafafa] [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_#09090b]";
+
 export function AuthShell({
   title,
   subtitle,

@@ -17,6 +17,7 @@ import { apiForm, apiSend, type ReturnableState } from "@/lib/api-client";
 import { verdictFromScore } from "@/lib/tender-scoring";
 import { companiesQuery, tendersQuery } from "@/lib/queries";
 import { downloadAuthenticatedFile } from "@/lib/download";
+import { NoCompanyEmpty } from "@/components/no-company-empty";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import {
   Attachment,
@@ -29,6 +30,13 @@ import {
 } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -227,16 +235,7 @@ function AnalyzePage() {
   }
 
   if (!companies.length) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-zinc-50 p-8">
-        <div className="text-center" data-testid="no-company-message">
-          <p className="text-zinc-600 mb-4">No company profile found.</p>
-          <Button data-testid="create-company-btn" onClick={() => void navigate({ to: "/setup" })}>
-            Create Company Profile
-          </Button>
-        </div>
-      </div>
-    );
+    return <NoCompanyEmpty testId="no-company-message" />;
   }
 
   if (tendersQueryResult.isPending || tendersQueryResult.isError) {
@@ -369,14 +368,14 @@ function AnalyzePage() {
                 >
                   <FieldLabel
                     htmlFor="pppfa-80-20"
-                    className="flex items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-2 text-sm font-normal normal-case tracking-normal"
+                    className="flex w-full items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-2 text-sm font-normal normal-case tracking-normal"
                   >
                     <RadioGroupItem id="pppfa-80-20" value="80/20" />
                     80/20 System (Standard)
                   </FieldLabel>
                   <FieldLabel
                     htmlFor="pppfa-90-10"
-                    className="flex items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-2 text-sm font-normal normal-case tracking-normal"
+                    className="flex w-full items-center gap-2 rounded-sm border border-zinc-200 bg-white px-3 py-2 text-sm font-normal normal-case tracking-normal"
                   >
                     <RadioGroupItem id="pppfa-90-10" value="90/10" />
                     90/10 System (Above R50M)
@@ -796,18 +795,21 @@ function AnalyzePage() {
         )}
 
         {!result && (
-          <div
-            className="rounded-sm border border-dashed border-zinc-300 bg-white p-8 text-center"
+          <Empty
+            className="rounded-sm border border-solid border-zinc-200 bg-white p-8"
             data-testid="empty-state"
           >
-            <p className="text-zinc-600">
-              Upload a tender PDF above to see your Go / No-Go analysis.
-            </p>
-            <p className="text-xs text-zinc-500 mt-2">
-              Scoring uses your company&apos;s compliance vault, CIDB grades, and bargaining council
-              coverage.
-            </p>
-          </div>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <FileTextIcon aria-hidden="true" />
+              </EmptyMedia>
+              <EmptyTitle>No analysis yet</EmptyTitle>
+              <EmptyDescription>
+                Upload a tender PDF above to see your Go / No-Go score. Scoring uses your
+                company&apos;s compliance vault, CIDB grades, and bargaining council coverage.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </div>
     </div>

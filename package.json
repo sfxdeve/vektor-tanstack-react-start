@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "nub run db:migrate:local && vite dev",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "nub run build && wrangler deploy",

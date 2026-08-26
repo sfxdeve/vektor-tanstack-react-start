@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BuildingIcon,
   CircleHelpIcon,
+  CoinsIcon,
   CreditCardIcon,
   FileTextIcon,
   HouseIcon,
@@ -24,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { asVektorSession, authClient } from "@/lib/auth/auth-client";
+import { companiesQuery, creditsQuery } from "@/lib/queries";
 import {
   Sidebar,
   SidebarContent,
@@ -47,6 +50,10 @@ const navItems = [
   { to: "/help", label: "Help & Guides", testId: "nav-help", icon: CircleHelpIcon },
   { to: "/about", label: "About Vektor", testId: "nav-about", icon: InfoIcon },
 ] as const;
+
+const ACTIVE_NAV =
+  "rounded-sm bg-teal-700 font-semibold text-white shadow-[inset_3px_0_0_0_theme(colors.teal.300)] hover:bg-teal-700 hover:text-white data-active:bg-teal-700 data-active:text-white";
+const IDLE_NAV = "rounded-sm text-zinc-300 hover:bg-zinc-800 hover:text-white";
 
 function NavLinks() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -72,11 +79,7 @@ function NavLinks() {
                       onClick={() => setOpenMobile(false)}
                     />
                   }
-                  className={
-                    isActive
-                      ? "bg-teal-500 font-semibold text-zinc-950 shadow-[inset_3px_0_0_0_theme(colors.teal.300)] hover:bg-teal-500 hover:text-zinc-950"
-                      : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                  }
+                  className={isActive ? ACTIVE_NAV : IDLE_NAV}
                 >
                   <Icon aria-hidden="true" />
                   <span>{item.label}</span>
@@ -87,6 +90,39 @@ function NavLinks() {
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
+  );
+}
+
+function CreditsAndCompany() {
+  const companiesQueryResult = useQuery(companiesQuery());
+  const companies = companiesQueryResult.data ?? [];
+  const company = companies[0];
+  const creditsQueryResult = useQuery({
+    ...creditsQuery(company?.id ?? ""),
+    enabled: Boolean(company?.id),
+  });
+  const credits = creditsQueryResult.data?.credits;
+
+  return (
+    <>
+      <div className="border-t border-zinc-800 px-4 py-3" data-testid="credits-info">
+        <div className="mb-1 flex items-center gap-2">
+          <CoinsIcon className="h-4 w-4 text-white" aria-hidden="true" />
+          <p className="text-xs tracking-[0.15em] text-zinc-400 uppercase">Credits</p>
+        </div>
+        <p className="text-2xl font-bold" data-testid="credits-balance">
+          {company ? (credits ?? "—") : 0}
+        </p>
+        <p className="mt-1 text-xs text-zinc-400">tender analyses available</p>
+      </div>
+      {company ? (
+        <div className="border-t border-zinc-800 px-4 py-3" data-testid="company-info">
+          <p className="mb-2 text-xs tracking-[0.15em] text-zinc-400 uppercase">Active Company</p>
+          <p className="truncate text-sm font-semibold">{company.company_name}</p>
+          <p className="text-xs text-zinc-400">CIPC: {company.cipc_num}</p>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -192,6 +228,7 @@ export function AppSidebar() {
           <SidebarContent>
             <NavLinks />
           </SidebarContent>
+          <CreditsAndCompany />
           <SidebarFooter className="border-t border-zinc-800">
             <UserFooter />
           </SidebarFooter>

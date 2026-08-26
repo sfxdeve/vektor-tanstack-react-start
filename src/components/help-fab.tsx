@@ -77,13 +77,16 @@ const DEFAULT_TIPS = {
 };
 
 const HIDDEN_PREFIXES = ["/login", "/signup", "/forgot-password", "/reset-password", "/admin"];
+const HIDDEN_EXACT = ["/", "/about", "/terms", "/privacy"];
 
 export function HelpFab() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  if (HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+  if (HIDDEN_EXACT.includes(pathname) || HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return null;
+  }
 
   const key = Object.keys(PAGE_TIPS).find((p) => pathname.startsWith(p));
   const ctx = key ? PAGE_TIPS[key]! : DEFAULT_TIPS;
@@ -95,7 +98,7 @@ export function HelpFab() {
         data-testid="help-fab"
         onClick={() => setOpen(true)}
         aria-label="Open help drawer"
-        className="fixed right-6 bottom-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-teal-700 text-white shadow-lg transition-colors hover:bg-teal-800 focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="fixed right-6 bottom-6 z-40 flex h-12 w-12 items-center justify-center rounded-sm bg-teal-700 text-white shadow-lg transition-colors hover:bg-teal-800 focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         <CircleQuestionMarkIcon className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -137,7 +140,7 @@ export function HelpFab() {
                   data-testid={`help-drawer-tip-${i}`}
                   className="flex gap-3 text-sm leading-relaxed text-zinc-700"
                 >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-700 text-xs font-bold text-white">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-teal-700 text-xs font-bold text-white">
                     {i + 1}
                   </span>
                   <span className="pt-0.5">{t}</span>

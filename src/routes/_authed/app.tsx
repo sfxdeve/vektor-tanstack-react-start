@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NoCompanyEmpty } from "@/components/no-company-empty";
 import {
   Empty,
   EmptyDescription,
@@ -165,30 +166,7 @@ function AppPage() {
             Your compliance overview.
           </p>
         </header>
-        <div className="flex flex-1 items-center justify-center p-8">
-          <Empty
-            className="max-w-md rounded-sm border border-zinc-200 bg-white p-8"
-            data-testid="no-company-state"
-          >
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Building2Icon aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle className="font-heading">No Company Profile Found</EmptyTitle>
-              <EmptyDescription>
-                Create your company profile to start analyzing tenders and managing compliance
-                documents.
-              </EmptyDescription>
-            </EmptyHeader>
-            <Button
-              data-testid="create-company-btn"
-              onClick={() => void navigate({ to: "/setup" })}
-              size="lg"
-            >
-              Create Company Profile
-            </Button>
-          </Empty>
-        </div>
+        <NoCompanyEmpty testId="no-company-state" />
       </div>
     );
   }
@@ -332,7 +310,7 @@ function AppPage() {
           <CardContent className="p-0">
             {tenders.length === 0 ? (
               <div className="p-8" data-testid="empty-tenders">
-                <Empty className="gap-3">
+                <Empty className="gap-3 border-solid">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <FileTextIcon aria-hidden="true" />

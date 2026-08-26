@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { AuthShell } from "@/components/auth-shell";
+import { AUTH_INPUT_CLASS, AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -41,15 +41,20 @@ function ResetPasswordPage() {
       return;
     }
     setSubmitting(true);
-    const { error } = await authClient.resetPassword({ newPassword: password, token });
-    if (error) {
-      toast.error(error.message || "Reset failed — link may have expired.");
+    try {
+      const { error } = await authClient.resetPassword({ newPassword: password, token });
+      if (error) {
+        toast.error(error.message || "Reset failed — link may have expired.");
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      toast.error("Reset failed — link may have expired.");
       setSubmitting(false);
       return;
     }
     toast.success("Password updated — you can now sign in.");
-    await navigate({ to: "/login", search: {} });
-    setSubmitting(false);
+    await navigate({ to: "/login", search: {}, replace: true });
   };
 
   if (errorParam) {
@@ -109,8 +114,7 @@ function ResetPasswordPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
-              placeholder="A memorable phrase works best"
+              className={AUTH_INPUT_CLASS}
             />
             <PasswordStrength password={password} />
           </Field>
@@ -129,8 +133,7 @@ function ResetPasswordPage() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
-              className="rounded-sm border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-500 focus-visible:border-teal-500 focus-visible:ring-teal-500/20"
-              placeholder="Repeat your new password"
+              className={AUTH_INPUT_CLASS}
             />
           </Field>
         </FieldGroup>

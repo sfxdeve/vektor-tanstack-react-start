@@ -88,6 +88,7 @@ import {
   type DocType,
   type VaultDocMutation,
 } from "@/lib/compliance";
+import { NoCompanyEmpty } from "@/components/no-company-empty";
 import { useActiveCompany } from "@/hooks/use-active-company";
 
 export const Route = createFileRoute("/_authed/documents")({
@@ -382,16 +383,7 @@ function DocumentsPage() {
   }
 
   if (!companies.length) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 p-8">
-        <div className="text-center" data-testid="no-company-message">
-          <p className="text-zinc-600 mb-4">No company profile found.</p>
-          <Button data-testid="create-company-btn" onClick={() => void navigate({ to: "/setup" })}>
-            Create Company Profile
-          </Button>
-        </div>
-      </div>
-    );
+    return <NoCompanyEmpty testId="no-company-message" />;
   }
 
   if (documentsQueryResult.isPending || documentsQueryResult.isError) {
@@ -595,14 +587,22 @@ function DocumentsPage() {
                     >
                       Upload File *
                     </FieldLabel>
-                    <Input
-                      id="file_name"
-                      data-testid="input-file-upload"
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                      className="mt-2 rounded-sm bg-white"
-                    />
+                    <label
+                      htmlFor="file_name"
+                      className="mt-2 flex h-24 cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-zinc-300 transition-colors hover:border-zinc-900"
+                    >
+                      <FileTextIcon className="mb-1 h-6 w-6 text-zinc-400" aria-hidden="true" />
+                      <span className="text-sm font-semibold text-zinc-900">Click to upload</span>
+                      <span className="text-xs text-zinc-500">PDF, JPG or PNG</span>
+                      <input
+                        id="file_name"
+                        data-testid="input-file-upload"
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
                     {uploadFile && (
                       <Attachment className="mt-2 rounded-sm" data-testid="selected-upload-file">
                         <AttachmentMedia>
@@ -781,7 +781,7 @@ function DocumentsPage() {
                 </div>
               ) : documents.length === 0 ? (
                 <div className="p-8" data-testid="empty-docs">
-                  <Empty className="gap-3">
+                  <Empty className="gap-3 border-solid">
                     <EmptyHeader>
                       <EmptyMedia variant="icon">
                         <FileTextIcon aria-hidden="true" />

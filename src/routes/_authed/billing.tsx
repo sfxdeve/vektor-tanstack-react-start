@@ -47,6 +47,7 @@ import {
   myEftPaymentsQuery,
   packagesQuery,
 } from "@/lib/queries";
+import { NoCompanyEmpty } from "@/components/no-company-empty";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import { rolloverCapForCycleCredits, type BankDetails } from "@/lib/eft";
 
@@ -167,16 +168,7 @@ function BillingPage() {
   }
 
   if (!companies.length) {
-    return (
-      <div className="flex flex-1 items-center justify-center bg-zinc-50 p-8">
-        <div className="text-center" data-testid="no-company-message">
-          <p className="text-zinc-600 mb-4">No company profile found.</p>
-          <Button data-testid="create-company-btn" onClick={() => void navigate({ to: "/setup" })}>
-            Create Company Profile
-          </Button>
-        </div>
-      </div>
-    );
+    return <NoCompanyEmpty testId="no-company-message" />;
   }
 
   if (creditsQueryResult.isPending || creditsQueryResult.isError) {
