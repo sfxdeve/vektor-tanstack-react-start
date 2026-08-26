@@ -231,6 +231,7 @@ function AboutPage() {
                         href="https://www.bccei.co.za"
                         target="_blank"
                         rel="noreferrer"
+                        data-testid="about-council-bccei"
                         className="text-teal-700 underline"
                       >
                         BCCEI — Civil Engineering
@@ -245,6 +246,7 @@ function AboutPage() {
                         href="https://www.nbcei.co.za"
                         target="_blank"
                         rel="noreferrer"
+                        data-testid="about-council-nbcei"
                         className="text-teal-700 underline"
                       >
                         NBCEI — Electrical
@@ -259,6 +261,7 @@ function AboutPage() {
                         href="https://www.meibc.co.za"
                         target="_blank"
                         rel="noreferrer"
+                        data-testid="about-council-meibc"
                         className="text-teal-700 underline"
                       >
                         MEIBC — Mechanical / HVAC
@@ -360,6 +363,7 @@ function AboutPage() {
                     href="https://www.nbcei.co.za"
                     target="_blank"
                     rel="noreferrer"
+                    data-testid="about-inline-nbcei"
                     className="font-semibold text-zinc-900 underline underline-offset-2"
                   >
                     NBCEI ↗
@@ -369,6 +373,7 @@ function AboutPage() {
                     href="https://www.meibc.co.za"
                     target="_blank"
                     rel="noreferrer"
+                    data-testid="about-inline-meibc"
                     className="font-semibold text-zinc-900 underline underline-offset-2"
                   >
                     MEIBC ↗
@@ -456,16 +461,16 @@ function AboutPage() {
             <span>© {new Date().getFullYear()} Vektor · SA Tender Compliance</span>
           </div>
           <div className="flex items-center gap-5">
-            <Link to="/about" className="hover:text-zinc-900">
+            <Link to="/about" data-testid="about-footer-about" className="hover:text-zinc-900">
               About
             </Link>
-            <Link to="/help" className="hover:text-zinc-900">
+            <Link to="/help" data-testid="about-footer-help" className="hover:text-zinc-900">
               Help
             </Link>
-            <Link to="/terms" className="hover:text-zinc-900">
+            <Link to="/terms" data-testid="about-footer-terms" className="hover:text-zinc-900">
               Terms
             </Link>
-            <Link to="/privacy" className="hover:text-zinc-900">
+            <Link to="/privacy" data-testid="about-footer-privacy" className="hover:text-zinc-900">
               Privacy
             </Link>
           </div>

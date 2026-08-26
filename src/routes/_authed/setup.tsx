@@ -32,6 +32,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { apiSend } from "@/lib/api-client";
 import type { Company } from "@/lib/api-client";
+import { validateStatutoryFields } from "@/lib/company-validation";
 import { companiesQuery, councilsQuery } from "@/lib/queries";
 import {
   Select,
@@ -246,19 +247,37 @@ function SetupPage() {
     }
   };
 
+  const statutoryReady = (() => {
+    try {
+      validateStatutoryFields(formData, { requireCipc: true });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.company_name || !formData.cipc_num) {
-      toast.error("Company name and CIPC number are required");
+    if (!formData.company_name.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
+    let statutoryFields: ReturnType<typeof validateStatutoryFields>;
+    try {
+      statutoryFields = validateStatutoryFields(formData, { requireCipc: true });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Check the statutory numbers and try again",
+      );
       return;
     }
     setSaving(true);
     const nullIfBlank = (v: string) => (typeof v === "string" && v.trim() === "" ? null : v);
     const payload = {
       company_name: formData.company_name.trim(),
-      cipc_num: formData.cipc_num.trim(),
-      csd_maaa_num: nullIfBlank(formData.csd_maaa_num),
-      sars_tcs_pin: nullIfBlank(formData.sars_tcs_pin),
+      cipc_num: statutoryFields.cipcNum,
+      csd_maaa_num: statutoryFields.csdMaaaNum,
+      sars_tcs_pin: statutoryFields.sarsTcsPin,
       cidb_crs_num: nullIfBlank(formData.cidb_crs_num),
       bbbee_level: formData.bbbee_level ? Number.parseInt(formData.bbbee_level, 10) : null,
       contact_email: nullIfBlank(formData.contact_email),
@@ -346,7 +365,7 @@ function SetupPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <FieldSet>
                 <FieldLegend className="sr-only">Company identity</FieldLegend>
                 <FieldGroup>
@@ -713,7 +732,7 @@ function SetupPage() {
                 <Button
                   data-testid="submit-company-btn"
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || !formData.company_name.trim() || !statutoryReady}
                   size="lg"
                   className="w-full bg-zinc-900 text-white hover:bg-zinc-800"
                 >

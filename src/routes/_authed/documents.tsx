@@ -65,8 +65,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+import { NoCompanyEmpty } from "@/components/no-company-empty";
+import { useActiveCompany } from "@/hooks/use-active-company";
 import { apiForm, apiSend } from "@/lib/api-client";
 import type { VaultDoc } from "@/lib/api-client";
+import {
+  classifyExpiry,
+  NEEDS_EXPIRY_TYPES,
+  isBbbeeMismatch,
+  isBcGos,
+  isExpiryMismatch,
+  type DocType,
+  type VaultDocMutation,
+} from "@/lib/compliance";
+import { downloadAuthenticatedFile } from "@/lib/download";
+import { companiesQuery, councilsQuery, documentsQuery } from "@/lib/queries";
 
 interface BbbeePreviewDto {
   extracted_bbbee_level: number | null;
@@ -77,19 +90,12 @@ interface BbbeePreview {
   level: number | null;
   expiry: string | null;
 }
-import { companiesQuery, councilsQuery, documentsQuery } from "@/lib/queries";
-import { downloadAuthenticatedFile } from "@/lib/download";
-import {
-  classifyExpiry,
-  NEEDS_EXPIRY_TYPES,
-  isBbbeeMismatch,
-  isBcGos,
-  isExpiryMismatch,
-  type DocType,
-  type VaultDocMutation,
-} from "@/lib/compliance";
-import { NoCompanyEmpty } from "@/components/no-company-empty";
-import { useActiveCompany } from "@/hooks/use-active-company";
+
+type BbbeePreviewState =
+  | { status: "idle" }
+  | { status: "loading"; key: string }
+  | { status: "success"; key: string; value: BbbeePreview }
+  | { status: "error"; key: string };
 
 export const Route = createFileRoute("/_authed/documents")({
   component: DocumentsPage,
@@ -132,13 +138,9 @@ function DocumentsPage() {
     is_compliant: true,
     bargaining_council: null,
   });
-  // Certificate preview keyed to the current (doc_type, file) selection —
-  // `bbbeePreview`/`previewLoading` below are derived, so a changed selection
-  // instantly hides stale data without a reset pass.
-  const [previewResult, setPreviewResult] = useState<{
-    key: string | null;
-    value: BbbeePreview | null;
-  } | null>(null);
+  // Certificate preview keyed to the current (doc_type, file) selection so a
+  // changed selection instantly hides stale responses without a reset pass.
+  const [previewState, setPreviewState] = useState<BbbeePreviewState>({ status: "idle" });
 
   const companies = companiesQueryResult.data ?? [];
   const {
@@ -186,16 +188,22 @@ function DocumentsPage() {
   const previewKey = uploadFile
     ? `${formData.doc_type}:${uploadFile.name}:${uploadFile.size}`
     : null;
-  const bbbeePreview = previewResult?.key === previewKey && previewKey ? previewResult.value : null;
+  const currentPreviewState =
+    previewState.status !== "idle" && previewState.key === previewKey
+      ? previewState
+      : ({ status: "idle" } as const);
+  const bbbeePreview = currentPreviewState.status === "success" ? currentPreviewState.value : null;
   const previewLoading =
-    Boolean(uploadFile) && PREVIEW_TYPES.has(formData.doc_type as DocType) && !bbbeePreview;
+    PREVIEW_TYPES.has(formData.doc_type as DocType) && currentPreviewState.status === "loading";
 
   // Preview extraction whenever a certificate file/type is picked. The result
   // is keyed to its inputs so stale responses never render — no reset pass
   // needed when the selection changes.
   useEffect(() => {
-    if (!uploadFile || !PREVIEW_TYPES.has(formData.doc_type as DocType)) return;
+    if (!uploadFile || !previewKey || !PREVIEW_TYPES.has(formData.doc_type as DocType)) return;
     let cancelled = false;
+    // oxlint-disable-next-line react/set-state-in-effect -- extraction starts when these inputs change
+    setPreviewState({ status: "loading", key: previewKey });
     const fd = new FormData();
     fd.append("file", uploadFile);
     fd.append("doc_type", formData.doc_type);
@@ -204,12 +212,15 @@ function DocumentsPage() {
         if (cancelled) return;
         const level = d.extracted_bbbee_level;
         const expiry = d.extracted_expiry_date;
-        setPreviewResult({
+        setPreviewState({
+          status: "success",
           key: previewKey,
-          value: level || expiry ? { level, expiry } : null,
+          value: { level, expiry },
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setPreviewState({ status: "error", key: previewKey });
+      });
     return () => {
       cancelled = true;
     };
@@ -662,6 +673,28 @@ function DocumentsPage() {
                         Reading certificate…
                       </p>
                     )}
+                    {PREVIEW_TYPES.has(formData.doc_type as DocType) &&
+                      currentPreviewState.status === "success" &&
+                      !bbbeePreview?.level &&
+                      !bbbeePreview?.expiry && (
+                        <p
+                          className="mt-1.5 text-[11px] text-zinc-600"
+                          data-testid="bbbee-preview-empty"
+                        >
+                          No expiry date could be detected. Enter it manually and verify it against
+                          the document.
+                        </p>
+                      )}
+                    {PREVIEW_TYPES.has(formData.doc_type as DocType) &&
+                      currentPreviewState.status === "error" && (
+                        <p
+                          className="mt-1.5 text-[11px] text-red-600"
+                          data-testid="bbbee-preview-error"
+                        >
+                          Could not read this document automatically. Enter the expiry date manually
+                          and verify it against the document.
+                        </p>
+                      )}
                     {PREVIEW_TYPES.has(formData.doc_type as DocType) &&
                       bbbeePreview?.expiry &&
                       !previewLoading && (

@@ -306,10 +306,7 @@ export async function sendDocumentReminder(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     error = msg;
-    if (
-      !force &&
-      (e instanceof EmailNotConfiguredError || e instanceof EmailProviderRejectedError)
-    ) {
+    if (!force) {
       await db.delete(sentReminders).where(eq(sentReminders.id, claimId));
     }
     return { status: "failed", error, threshold, to: toEmail };

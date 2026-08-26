@@ -29,6 +29,7 @@ export const referrals = sqliteTable(
     capReason: text("capReason"),
     pendingReferrerCredits: integer("pendingReferrerCredits"),
     pendingPlanLookupKey: text("pendingPlanLookupKey"),
+    pendingTriggerReference: text("pendingTriggerReference"),
     firstPaidAt: integer("firstPaidAt", { mode: "timestamp" }),
     firstPaidPlanLookupKey: text("firstPaidPlanLookupKey"),
     rewardClaimToken: text("rewardClaimToken"),

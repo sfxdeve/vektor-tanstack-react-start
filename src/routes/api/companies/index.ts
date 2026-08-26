@@ -5,11 +5,13 @@ import { eq } from "drizzle-orm";
 import { createDb } from "@/db";
 import { companies } from "@/db/schema/company";
 import { ensureCredits } from "@/lib/credits";
+import { claimPendingReferralRewards } from "@/lib/referral";
 import {
   nullIfBlank,
   toApiCompany,
   validateCouncils,
   validatePppfa,
+  validateStatutoryFields,
 } from "@/lib/company-validation";
 import { requireUser } from "@/lib/server-auth";
 
@@ -42,10 +44,16 @@ export const Route = createFileRoute("/api/companies/")({
         if (!body) return Response.json({ detail: "Invalid JSON" }, { status: 400 });
 
         const companyName = asString(body.company_name).trim();
-        const cipcNum = asString(body.cipc_num).trim();
-        if (!companyName || !cipcNum) {
+        if (!companyName) {
+          return Response.json({ detail: "Company name is required" }, { status: 400 });
+        }
+
+        let statutory;
+        try {
+          statutory = validateStatutoryFields(body, { requireCipc: true });
+        } catch (e) {
           return Response.json(
-            { detail: "Company name and CIPC number are required" },
+            { detail: e instanceof Error ? e.message : "Invalid statutory fields" },
             { status: 400 },
           );
         }
@@ -90,9 +98,9 @@ export const Route = createFileRoute("/api/companies/")({
           id,
           userId: session.user.id,
           companyName,
-          cipcNum,
-          csdMaaaNum: nullIfBlank(body.csd_maaa_num),
-          sarsTcsPin: nullIfBlank(body.sars_tcs_pin),
+          cipcNum: statutory.cipcNum!,
+          csdMaaaNum: statutory.csdMaaaNum ?? null,
+          sarsTcsPin: statutory.sarsTcsPin ?? null,
           cidbCrsNum: nullIfBlank(body.cidb_crs_num),
           bbbeeLevel,
           contactEmail: nullIfBlank(body.contact_email),
@@ -109,6 +117,11 @@ export const Route = createFileRoute("/api/companies/")({
         // One free trial credit per new company (plus any referral signup bonus,
         // which is 0 in the referrer-only program).
         await ensureCredits(db, id, 1);
+        await claimPendingReferralRewards(
+          db,
+          { referrerUserId: session.user.id, referrerCompanyId: id },
+          env.DB,
+        );
 
         const created = (await db.select().from(companies).where(eq(companies.id, id)))[0]!;
         return Response.json(toApiCompany(created), { status: 201 });

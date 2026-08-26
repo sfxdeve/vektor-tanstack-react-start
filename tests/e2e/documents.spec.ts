@@ -63,6 +63,23 @@ test.describe("Compliance Document Vault", () => {
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-not-a-parseable-document"),
     };
+
+    await page.getByTestId("select-doc-type").click();
+    await page.getByRole("option", { name: /B-BBEE Certificate/ }).click();
+    await page.getByTestId("input-file-upload").setInputFiles(unreadablePdf);
+    await expect(page.getByTestId("bbbee-preview-empty")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("bbbee-preview-loading")).toBeHidden();
+    await page.getByTestId("remove-upload-file").click();
+
+    await page.route("**/api/documents/preview-bbbee", (route) =>
+      route.fulfill({ status: 503, contentType: "application/json", body: "{}" }),
+    );
+    await page.getByTestId("input-file-upload").setInputFiles(unreadablePdf);
+    await expect(page.getByTestId("bbbee-preview-error")).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId("bbbee-preview-loading")).toBeHidden();
+    await page.getByTestId("remove-upload-file").click();
+    await page.unroute("**/api/documents/preview-bbbee");
+
     const preview = await page.request.post("/api/documents/preview-bbbee", {
       multipart: { file: unreadablePdf, doc_type: "BBBEE" },
     });

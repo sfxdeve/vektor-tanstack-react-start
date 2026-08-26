@@ -13,12 +13,12 @@
  * referrals row (pending_referrer_company) rather than failing the confirm.
  */
 
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
 
 import type { createDb } from "@/db";
 import { user } from "@/db/schema/auth";
 import { companies } from "@/db/schema/company";
-import { referrals, referralRewards } from "@/db/schema/referral";
+import { referrals, referralRewards, type ReferralRow } from "@/db/schema/referral";
 import { generateReference } from "@/lib/eft";
 
 export const TIER_REWARDS: Record<string, number> = {
@@ -211,6 +211,145 @@ export interface RewardResult {
   reason?: string;
 }
 
+async function grantReferralReward(
+  db: ReturnType<typeof createDb>,
+  ref: ReferralRow,
+  args: {
+    referrerCompanyId: string;
+    creditsToGrant: number;
+    planLookupKey: string | null;
+    triggerReference: string | null;
+  },
+  d1: D1Database,
+): Promise<RewardResult | null> {
+  const { referrerCompanyId, creditsToGrant, planLookupKey, triggerReference } = args;
+  const now = Math.floor(Date.now() / 1000);
+  const monthStartDate = new Date();
+  monthStartDate.setUTCDate(1);
+  monthStartDate.setUTCHours(0, 0, 0, 0);
+  const monthStart = Math.floor(monthStartDate.getTime() / 1000);
+  const token = crypto.randomUUID();
+  try {
+    const results = await d1.batch([
+      d1
+        .prepare(
+          `UPDATE referrals SET rewardClaimToken = ?
+         WHERE id = ? AND referrerFirstPaidBonusGranted = 0 AND rewardClaimToken IS NULL
+           AND (SELECT count(*) FROM referral_rewards WHERE referrerUserId = ?) < ?
+           AND (SELECT count(*) FROM referral_rewards WHERE referrerUserId = ? AND createdAt >= ?) < ?`,
+        )
+        .bind(
+          token,
+          ref.id,
+          ref.referrerUserId,
+          LIFETIME_REWARD_CAP,
+          ref.referrerUserId,
+          monthStart,
+          MONTHLY_REWARD_CAP,
+        ),
+      d1
+        .prepare(
+          `INSERT INTO company_credits (companyId, credits, subscriptionActive, updatedAt)
+         SELECT ?, ?, 0, ? FROM referrals WHERE id = ? AND rewardClaimToken = ?
+         ON CONFLICT(companyId) DO UPDATE SET
+           credits = company_credits.credits + excluded.credits, updatedAt = excluded.updatedAt`,
+        )
+        .bind(referrerCompanyId, creditsToGrant, now, ref.id, token),
+      d1
+        .prepare(
+          `INSERT INTO referral_rewards
+          (id, referrerUserId, refereeUserId, referrerCompanyId, creditsGranted, type,
+           planLookupKey, triggerReference, createdAt)
+         SELECT ?, referrerUserId, refereeUserId, ?, ?, 'first_paid_subscription', ?, ?, ?
+         FROM referrals WHERE id = ? AND rewardClaimToken = ?`,
+        )
+        .bind(
+          crypto.randomUUID(),
+          referrerCompanyId,
+          creditsToGrant,
+          planLookupKey,
+          triggerReference,
+          now,
+          ref.id,
+          token,
+        ),
+      d1
+        .prepare(
+          `UPDATE referrals SET status = 'first_paid_subscription',
+           referrerFirstPaidBonusGranted = 1, referrerSubBonusGranted = 1,
+           firstPaidAt = ?, firstPaidPlanLookupKey = ?, rewardClaimToken = NULL,
+           pendingReferrerCredits = NULL, pendingPlanLookupKey = NULL,
+           pendingTriggerReference = NULL
+         WHERE id = ? AND rewardClaimToken = ?`,
+        )
+        .bind(now, planLookupKey, ref.id, token),
+    ]);
+    if (Number(results[0]!.meta.changes ?? 0) !== 1) {
+      const lifetime = await rewardsUsedLifetime(db, ref.referrerUserId);
+      const monthly = await rewardsUsedThisMonth(db, ref.referrerUserId);
+      if (lifetime >= LIFETIME_REWARD_CAP || monthly >= MONTHLY_REWARD_CAP) {
+        const reason = lifetime >= LIFETIME_REWARD_CAP ? "lifetime_cap" : "monthly_cap";
+        await db
+          .update(referrals)
+          .set({ status: "capped", cappedAt: new Date(), capReason: reason.replace("_cap", "") })
+          .where(and(eq(referrals.id, ref.id), eq(referrals.referrerFirstPaidBonusGranted, false)));
+        return { granted: false, reason };
+      }
+      return null;
+    }
+  } catch (error) {
+    const durable = (await db.select().from(referrals).where(eq(referrals.id, ref.id)))[0];
+    if (durable?.referrerFirstPaidBonusGranted) return null;
+    throw error;
+  }
+
+  return {
+    granted: true,
+    credits: creditsToGrant,
+    referrer_user_id: ref.referrerUserId,
+    plan_lookup_key: planLookupKey,
+    type: "first_paid_subscription",
+  };
+}
+
+/** Claim all rewards parked while a referrer had no company. */
+export async function claimPendingReferralRewards(
+  db: ReturnType<typeof createDb>,
+  args: { referrerUserId: string; referrerCompanyId: string },
+  d1: D1Database = db.$client,
+): Promise<RewardResult[]> {
+  const pending = await db
+    .select()
+    .from(referrals)
+    .where(
+      and(
+        eq(referrals.referrerUserId, args.referrerUserId),
+        eq(referrals.status, "pending_referrer_company"),
+        eq(referrals.referrerFirstPaidBonusGranted, false),
+      ),
+    )
+    .orderBy(referrals.createdAt);
+  const results: RewardResult[] = [];
+
+  for (const ref of pending) {
+    if (!ref.pendingReferrerCredits || !ref.pendingPlanLookupKey) continue;
+    const result = await grantReferralReward(
+      db,
+      ref,
+      {
+        referrerCompanyId: args.referrerCompanyId,
+        creditsToGrant: ref.pendingReferrerCredits,
+        planLookupKey: ref.pendingPlanLookupKey,
+        triggerReference: ref.pendingTriggerReference,
+      },
+      d1,
+    );
+    if (result) results.push(result);
+  }
+
+  return results;
+}
+
 /**
  * Called from the EFT admin confirm handler on every successful confirmation.
  * Fires only on the referee's FIRST paid subscription EFT; PAYG never rewards.
@@ -250,96 +389,46 @@ export async function maybeRewardReferrerOnPaidEft(
         status: "pending_referrer_company",
         pendingReferrerCredits: creditsToGrant,
         pendingPlanLookupKey: planLookupKey ?? null,
+        pendingTriggerReference: triggerReference,
       })
-      .where(and(eq(referrals.id, ref.id), eq(referrals.referrerFirstPaidBonusGranted, false)));
+      .where(
+        and(
+          eq(referrals.id, ref.id),
+          eq(referrals.referrerFirstPaidBonusGranted, false),
+          isNull(referrals.pendingReferrerCredits),
+        ),
+      );
+
+    // Close the race where the company was created while this reward was being parked.
+    const companyAfterPark = (
+      await db
+        .select()
+        .from(companies)
+        .where(eq(companies.userId, ref.referrerUserId))
+        .orderBy(companies.createdAt)
+    )[0];
+    if (companyAfterPark) {
+      const claimed = await claimPendingReferralRewards(
+        db,
+        { referrerUserId: ref.referrerUserId, referrerCompanyId: companyAfterPark.id },
+        d1,
+      );
+      return claimed[0] ?? null;
+    }
     return { granted: false, reason: "referrer_has_no_company" };
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const monthStartDate = new Date();
-  monthStartDate.setUTCDate(1);
-  monthStartDate.setUTCHours(0, 0, 0, 0);
-  const monthStart = Math.floor(monthStartDate.getTime() / 1000);
-  const token = crypto.randomUUID();
-  try {
-    const results = await d1.batch([
-      d1
-        .prepare(
-          `UPDATE referrals SET rewardClaimToken = ?
-         WHERE id = ? AND referrerFirstPaidBonusGranted = 0 AND rewardClaimToken IS NULL
-           AND (SELECT count(*) FROM referral_rewards WHERE referrerUserId = ?) < ?
-           AND (SELECT count(*) FROM referral_rewards WHERE referrerUserId = ? AND createdAt >= ?) < ?`,
-        )
-        .bind(
-          token,
-          ref.id,
-          ref.referrerUserId,
-          LIFETIME_REWARD_CAP,
-          ref.referrerUserId,
-          monthStart,
-          MONTHLY_REWARD_CAP,
-        ),
-      d1
-        .prepare(
-          `INSERT INTO company_credits (companyId, credits, subscriptionActive, updatedAt)
-         SELECT ?, ?, 0, ? FROM referrals WHERE id = ? AND rewardClaimToken = ?
-         ON CONFLICT(companyId) DO UPDATE SET
-           credits = company_credits.credits + excluded.credits, updatedAt = excluded.updatedAt`,
-        )
-        .bind(referrerCompany.id, creditsToGrant, now, ref.id, token),
-      d1
-        .prepare(
-          `INSERT INTO referral_rewards
-          (id, referrerUserId, refereeUserId, referrerCompanyId, creditsGranted, type,
-           planLookupKey, triggerReference, createdAt)
-         SELECT ?, referrerUserId, refereeUserId, ?, ?, 'first_paid_subscription', ?, ?, ?
-         FROM referrals WHERE id = ? AND rewardClaimToken = ?`,
-        )
-        .bind(
-          crypto.randomUUID(),
-          referrerCompany.id,
-          creditsToGrant,
-          planLookupKey ?? null,
-          triggerReference,
-          now,
-          ref.id,
-          token,
-        ),
-      d1
-        .prepare(
-          `UPDATE referrals SET status = 'first_paid_subscription',
-           referrerFirstPaidBonusGranted = 1, referrerSubBonusGranted = 1,
-           firstPaidAt = ?, firstPaidPlanLookupKey = ?, rewardClaimToken = NULL
-         WHERE id = ? AND rewardClaimToken = ?`,
-        )
-        .bind(now, planLookupKey ?? null, ref.id, token),
-    ]);
-    if (Number(results[0]!.meta.changes ?? 0) !== 1) {
-      const lifetime = await rewardsUsedLifetime(db, ref.referrerUserId);
-      const monthly = await rewardsUsedThisMonth(db, ref.referrerUserId);
-      if (lifetime >= LIFETIME_REWARD_CAP || monthly >= MONTHLY_REWARD_CAP) {
-        const reason = lifetime >= LIFETIME_REWARD_CAP ? "lifetime_cap" : "monthly_cap";
-        await db
-          .update(referrals)
-          .set({ status: "capped", cappedAt: new Date(), capReason: reason.replace("_cap", "") })
-          .where(and(eq(referrals.id, ref.id), eq(referrals.referrerFirstPaidBonusGranted, false)));
-        return { granted: false, reason };
-      }
-      return null;
-    }
-  } catch (error) {
-    const durable = (await db.select().from(referrals).where(eq(referrals.id, ref.id)))[0];
-    if (durable?.referrerFirstPaidBonusGranted) return null;
-    throw error;
-  }
-
-  return {
-    granted: true,
-    credits: creditsToGrant,
-    referrer_user_id: ref.referrerUserId,
-    plan_lookup_key: planLookupKey ?? null,
-    type: "first_paid_subscription",
-  };
+  return grantReferralReward(
+    db,
+    ref,
+    {
+      referrerCompanyId: referrerCompany.id,
+      creditsToGrant,
+      planLookupKey: planLookupKey ?? null,
+      triggerReference,
+    },
+    d1,
+  );
 }
 
 export interface ReferralStats {

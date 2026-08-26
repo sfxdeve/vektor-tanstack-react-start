@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { validateStatutoryFields } from "@/lib/company-validation";
 import { verifyCipc, verifyCsdMaaa, verifySarsTcs, verify } from "@/lib/verification";
 
 describe("verification", () => {
@@ -95,5 +96,59 @@ describe("verification", () => {
     it("returns null for unknown kind", () => {
       expect(verify("unknown", "value")).toBeNull();
     });
+  });
+});
+
+describe("company statutory field validation", () => {
+  it("requires a valid string CIPC number when requested", () => {
+    expect(() => validateStatutoryFields({}, { requireCipc: true })).toThrow(
+      "CIPC number is required",
+    );
+    expect(() =>
+      validateStatutoryFields({ cipc_num: 202112345607 }, { requireCipc: true }),
+    ).toThrow("CIPC number must be a string");
+    expect(() =>
+      validateStatutoryFields({ cipc_num: "2021-123456-07" }, { requireCipc: true }),
+    ).toThrow("Invalid CIPC number: Format must be YYYY/NNNNNN/TT");
+  });
+
+  it("normalizes valid statutory values", () => {
+    expect(
+      validateStatutoryFields(
+        {
+          cipc_num: " 2021/123456/07 ",
+          csd_maaa_num: " maaa0123456 ",
+          sars_tcs_pin: " ab12cd34ef ",
+        },
+        { requireCipc: true },
+      ),
+    ).toEqual({
+      cipcNum: "2021/123456/07",
+      csdMaaaNum: "MAAA0123456",
+      sarsTcsPin: "AB12CD34EF",
+    });
+  });
+
+  it("rejects invalid supplied CSD and SARS values and non-string types", () => {
+    expect(() => validateStatutoryFields({ csd_maaa_num: "MAAA123" })).toThrow(
+      "Invalid CSD/MAAA number",
+    );
+    expect(() => validateStatutoryFields({ sars_tcs_pin: "ABC-123" })).toThrow(
+      "Invalid SARS TCS PIN",
+    );
+    expect(() => validateStatutoryFields({ csd_maaa_num: 123 })).toThrow(
+      "CSD/MAAA number must be a string or null",
+    );
+    expect(() => validateStatutoryFields({ sars_tcs_pin: false })).toThrow(
+      "SARS TCS PIN must be a string or null",
+    );
+  });
+
+  it("normalizes blank optional values to null and ignores omitted fields", () => {
+    expect(validateStatutoryFields({ csd_maaa_num: "  ", sars_tcs_pin: null })).toEqual({
+      csdMaaaNum: null,
+      sarsTcsPin: null,
+    });
+    expect(validateStatutoryFields({})).toEqual({});
   });
 });

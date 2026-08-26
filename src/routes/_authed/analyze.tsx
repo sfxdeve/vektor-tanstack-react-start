@@ -15,7 +15,7 @@ import { GoNoGoGauge } from "@/components/gonogo-gauge";
 
 import { apiForm, apiSend, type ReturnableState } from "@/lib/api-client";
 import { verdictFromScore } from "@/lib/tender-scoring";
-import { companiesQuery, tendersQuery } from "@/lib/queries";
+import { companiesQuery, creditsQuery, tendersQuery } from "@/lib/queries";
 import { downloadAuthenticatedFile } from "@/lib/download";
 import { NoCompanyEmpty } from "@/components/no-company-empty";
 import { useActiveCompany } from "@/hooks/use-active-company";
@@ -102,7 +102,12 @@ function AnalyzePage() {
 
   const analyzeMutation = useMutation({
     mutationFn: (form: FormData) => apiForm<TenderResult>("/api/tenders/analyze", form),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: tendersQuery(companyId!).queryKey }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: tendersQuery(companyId!).queryKey }),
+        queryClient.invalidateQueries({ queryKey: creditsQuery(companyId!).queryKey }),
+      ]);
+    },
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

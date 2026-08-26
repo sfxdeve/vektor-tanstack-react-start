@@ -9,6 +9,7 @@ import {
   toApiCompany,
   validateCouncils,
   validatePppfa,
+  validateStatutoryFields,
 } from "@/lib/company-validation";
 import { fetchOwnedCompany } from "@/lib/ownership";
 import { requireUser } from "@/lib/server-auth";
@@ -40,11 +41,16 @@ export const Route = createFileRoute("/api/companies/$companyId")({
         // unrelated fields, and explicit nulls clear optional statutory fields.
         const updates: Record<string, unknown> = {};
         const has = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+        try {
+          Object.assign(updates, validateStatutoryFields(body));
+        } catch (e) {
+          return Response.json(
+            { detail: e instanceof Error ? e.message : "Invalid statutory fields" },
+            { status: 400 },
+          );
+        }
         const textFields = [
           "company_name",
-          "cipc_num",
-          "csd_maaa_num",
-          "sars_tcs_pin",
           "cidb_crs_num",
           "contact_email",
           "contact_phone",
@@ -55,7 +61,7 @@ export const Route = createFileRoute("/api/companies/$companyId")({
         for (const field of textFields) {
           if (!has(field)) continue;
           if (
-            (field === "company_name" || field === "cipc_num") &&
+            field === "company_name" &&
             typeof body[field] === "string" &&
             body[field].trim() === ""
           ) {

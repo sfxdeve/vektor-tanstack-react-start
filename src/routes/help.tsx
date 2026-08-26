@@ -726,13 +726,13 @@ function HelpPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-xs text-zinc-500 md:flex-row">
           <span>© {new Date().getFullYear()} Vektor · SA Tender Compliance</span>
           <div className="flex items-center gap-5">
-            <Link to="/about" className="hover:text-zinc-900">
+            <Link to="/about" data-testid="help-footer-about" className="hover:text-zinc-900">
               About
             </Link>
-            <Link to="/terms" className="hover:text-zinc-900">
+            <Link to="/terms" data-testid="help-footer-terms" className="hover:text-zinc-900">
               Terms
             </Link>
-            <Link to="/privacy" className="hover:text-zinc-900">
+            <Link to="/privacy" data-testid="help-footer-privacy" className="hover:text-zinc-900">
               Privacy
             </Link>
           </div>

@@ -55,6 +55,7 @@ test.describe("Tender Analysis Core", () => {
 
     await page.getByTestId("analyze-btn").click();
     await expect(page.getByTestId("results-section")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId("credits-balance")).toHaveText("0");
     await expect(page.getByTestId("fit-score-card")).toBeVisible();
     await expect(page.getByTestId("gonogo-gauge")).toBeVisible();
     await expect(page.getByTestId("verdict-label")).toBeVisible();

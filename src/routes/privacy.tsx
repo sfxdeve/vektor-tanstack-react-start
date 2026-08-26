@@ -77,6 +77,7 @@ function PrivacyPage() {
               collect when you use Vektor at{" "}
               <a
                 href="https://www.vektorhq.co.za"
+                data-testid="privacy-site-link"
                 className="text-teal-700 underline underline-offset-2"
               >
                 www.vektorhq.co.za
@@ -88,11 +89,30 @@ function PrivacyPage() {
               Information Officer at{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
+                data-testid="privacy-contact-link"
                 className="text-teal-700 underline underline-offset-2"
               >
                 {CONTACT_EMAIL}
               </a>
               .
+            </p>
+          </section>
+
+          <section
+            id="service-providers"
+            data-testid="privacy-section-service-providers"
+            className="mt-10 scroll-mt-8"
+          >
+            <h2 className="text-xl font-bold tracking-tight">Service Providers</h2>
+            <p>
+              We use Cloudflare to run Vektor and store account records and uploaded files in D1 and
+              R2, Resend to deliver transactional email, and OpenAI through Cloudflare AI Gateway to
+              analyse extracted tender text. These providers process only the data needed to deliver
+              those services under their respective data-protection terms.
+            </p>
+            <p>
+              Tender analysis may send text extracted from your uploaded tender to the AI provider.
+              Do not upload information that you are not authorised to process.
             </p>
           </section>
 
@@ -216,6 +236,7 @@ function PrivacyPage() {
               To exercise any right, email{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
+                data-testid="privacy-rights-contact-link"
                 className="text-teal-700 underline underline-offset-2"
               >
                 {CONTACT_EMAIL}
@@ -232,10 +253,10 @@ function PrivacyPage() {
             <h2 className="text-xl font-bold tracking-tight">Security</h2>
             <p>We protect your data with:</p>
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>Bcrypt password hashing (industry standard, salted)</li>
+              <li>Better Auth password hashing and database-backed session management</li>
               <li>HTTPS/TLS 1.3 encryption in transit</li>
               <li>At-rest encryption on documents in R2 storage</li>
-              <li>JWT session cookies with HttpOnly + Secure + SameSite flags</li>
+              <li>HttpOnly, Secure, SameSite session cookies</li>
               <li>Multi-tenant data isolation — your data is scoped to your account only</li>
             </ul>
             <p>
@@ -309,6 +330,7 @@ function PrivacyPage() {
                   href="https://www.bccei.co.za"
                   target="_blank"
                   rel="noreferrer"
+                  data-testid="privacy-bccei-link"
                   className="font-semibold text-zinc-900 underline underline-offset-2"
                 >
                   BCCEI
@@ -318,6 +340,7 @@ function PrivacyPage() {
                   href="https://www.nbcei.co.za"
                   target="_blank"
                   rel="noreferrer"
+                  data-testid="privacy-nbcei-link"
                   className="font-semibold text-zinc-900 underline underline-offset-2"
                 >
                   NBCEI
@@ -327,6 +350,7 @@ function PrivacyPage() {
                   href="https://www.meibc.co.za"
                   target="_blank"
                   rel="noreferrer"
+                  data-testid="privacy-meibc-link"
                   className="font-semibold text-zinc-900 underline underline-offset-2"
                 >
                   MEIBC
@@ -345,6 +369,7 @@ function PrivacyPage() {
               Email:{" "}
               <a
                 href={`mailto:${CONTACT_EMAIL}`}
+                data-testid="privacy-footer-contact-link"
                 className="text-teal-700 underline underline-offset-2"
               >
                 {CONTACT_EMAIL}
@@ -353,6 +378,7 @@ function PrivacyPage() {
               Web:{" "}
               <a
                 href="https://www.vektorhq.co.za"
+                data-testid="privacy-footer-site-link"
                 className="text-teal-700 underline underline-offset-2"
               >
                 www.vektorhq.co.za
@@ -360,7 +386,11 @@ function PrivacyPage() {
             </p>
             <p className="text-sm text-zinc-500">
               You can also review our{" "}
-              <Link to="/terms" className="text-teal-700 underline underline-offset-2">
+              <Link
+                to="/terms"
+                data-testid="privacy-inline-terms-link"
+                className="text-teal-700 underline underline-offset-2"
+              >
                 Terms of Service
               </Link>{" "}
               for how the Service is provided.

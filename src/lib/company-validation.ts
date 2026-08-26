@@ -1,7 +1,63 @@
 import type { companies } from "@/db/schema/company";
 import { VALID_COUNCIL_CODES } from "@/lib/bargaining-councils";
+import { verifyCipc, verifyCsdMaaa, verifySarsTcs } from "@/lib/verification";
 
 const VALID_PPPFA = new Set(["80/20", "90/10"]);
+
+interface StatutoryFields {
+  cipcNum?: string;
+  csdMaaaNum?: string | null;
+  sarsTcsPin?: string | null;
+}
+
+/** Validate supplied statutory fields and return database-ready normalized values. */
+export function validateStatutoryFields(
+  body: Record<string, unknown>,
+  options: { requireCipc?: boolean } = {},
+): StatutoryFields {
+  const result: StatutoryFields = {};
+  const has = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+
+  if (options.requireCipc && !has("cipc_num")) {
+    throw new Error("CIPC number is required");
+  }
+  if (has("cipc_num")) {
+    if (typeof body.cipc_num !== "string") {
+      throw new Error("CIPC number must be a string");
+    }
+    const verification = verifyCipc(body.cipc_num);
+    if (!verification.valid) {
+      throw new Error(`Invalid CIPC number: ${verification.reason}`);
+    }
+    result.cipcNum = verification.normalized!;
+  }
+
+  for (const [inputKey, outputKey, label, verify] of [
+    ["csd_maaa_num", "csdMaaaNum", "CSD/MAAA number", verifyCsdMaaa],
+    ["sars_tcs_pin", "sarsTcsPin", "SARS TCS PIN", verifySarsTcs],
+  ] as const) {
+    if (!has(inputKey)) continue;
+    const value = body[inputKey];
+    if (value === null) {
+      result[outputKey] = null;
+      continue;
+    }
+    if (typeof value !== "string") {
+      throw new Error(`${label} must be a string or null`);
+    }
+    if (value.trim() === "") {
+      result[outputKey] = null;
+      continue;
+    }
+    const verification = verify(value);
+    if (!verification.valid) {
+      throw new Error(`Invalid ${label}: ${verification.reason}`);
+    }
+    result[outputKey] = verification.normalized!;
+  }
+
+  return result;
+}
 
 export function validateCouncils(codes: unknown): string[] | null {
   if (codes == null) return null;

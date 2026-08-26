@@ -1,14 +1,23 @@
 import { and, eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { companies } from "@/db/schema/company";
 import { complianceDocuments, sentReminders } from "@/db/schema/compliance";
 import { user } from "@/db/schema/auth";
-import { daysUntil, pickThreshold, REMINDER_THRESHOLDS } from "@/lib/reminder";
+import {
+  daysUntil,
+  pickThreshold,
+  REMINDER_THRESHOLDS,
+  sendDocumentReminder,
+} from "@/lib/reminder";
 
 import type { Database } from "@/db";
 
 import { createTestDb } from "../helpers/test-db";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function seed(db: Database): Promise<{ companyId: string; documentId: string }> {
   const now = new Date();
@@ -105,5 +114,57 @@ describe("reminder thresholds — idempotency against real SQL", () => {
 
     await db.delete(complianceDocuments).where(eq(complianceDocuments.id, ids.documentId));
     expect(await db.select().from(sentReminders)).toHaveLength(0);
+  });
+
+  it.each([
+    ["network errors", () => Promise.reject(new TypeError("network unavailable"))],
+    [
+      "responses without a provider id",
+      () => Promise.resolve(new Response(JSON.stringify({}), { status: 200 })),
+    ],
+  ])("releases the claim after %s so a later sweep can retry", async (_name, failSend) => {
+    const db = createTestDb();
+    const ids = await seed(db);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(failSend)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "re_retry" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const send = () =>
+      sendDocumentReminder(
+        db,
+        { RESEND_API_KEY: "test-api-key" },
+        {
+          id: ids.companyId,
+          companyName: "Expiry Co",
+          contactEmail: "compliance@example.com",
+          alertsEnabled: true,
+        },
+        {
+          id: ids.documentId,
+          docType: "TAX_PIN",
+          fileName: "tax-pin.pdf",
+          expiryDate: "2026-09-02",
+          isCompliant: true,
+        },
+        7,
+      );
+
+    await expect(send()).resolves.toMatchObject({ status: "failed", threshold: 7 });
+    expect(await db.select().from(sentReminders)).toHaveLength(0);
+
+    await expect(send()).resolves.toMatchObject({
+      status: "sent",
+      threshold: 7,
+      resendId: "re_retry",
+    });
+    expect(await db.select().from(sentReminders)).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
