@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { apiBlob, apiGet, apiSend, type EftPayment } from "@/lib/api-client";
 import { qk } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/date";
 
 export const Route = createFileRoute("/admin/eft")({
   component: AdminEftPage,
@@ -329,7 +330,7 @@ function AdminEftPage() {
                         )}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-xs text-zinc-400">
-                        {new Date(p.created_at).toLocaleString("en-ZA")}
+                        {formatDateTime(p.created_at)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-right">
                         <div className="inline-flex items-center gap-1.5">

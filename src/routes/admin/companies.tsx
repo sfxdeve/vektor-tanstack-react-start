@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiGet, apiSend, qk } from "@/lib/api-client";
+import { formatDate } from "@/lib/date";
 
 export const Route = createFileRoute("/admin/companies")({
   component: AdminCompaniesPage,
@@ -282,7 +283,7 @@ function AdminCompaniesPage() {
                     <TableCell className="px-6 py-4 text-zinc-300">{r.tender_count}</TableCell>
                     <TableCell className="px-6 py-4 text-zinc-300">{r.credits}</TableCell>
                     <TableCell className="px-6 py-4 text-xs text-zinc-400">
-                      {new Date(r.created_at).toLocaleDateString("en-ZA")}
+                      {formatDate(r.created_at)}
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
@@ -408,7 +409,7 @@ function AdminCompaniesPage() {
               <ul className="mt-2 space-y-1 text-xs text-zinc-400">
                 {selectedDetail.reminders.slice(0, 3).map((r) => (
                   <li key={r.id}>
-                    threshold {r.threshold} · {new Date(r.sent_at).toLocaleDateString()}
+                    threshold {r.threshold} · {formatDate(r.sent_at)}
                   </li>
                 ))}
               </ul>

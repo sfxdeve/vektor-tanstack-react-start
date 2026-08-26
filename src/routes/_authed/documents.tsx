@@ -79,6 +79,7 @@ import {
   type VaultDocMutation,
 } from "@/lib/compliance";
 import { downloadAuthenticatedFile } from "@/lib/download";
+import { formatDate } from "@/lib/date";
 import { companiesQuery, councilsQuery, documentsQuery } from "@/lib/queries";
 
 interface BbbeePreviewDto {
@@ -905,9 +906,7 @@ function DocumentsPage() {
                                         : ""
                                   }
                                 >
-                                  {doc.expiry_date
-                                    ? new Date(doc.expiry_date).toLocaleDateString()
-                                    : "—"}
+                                  {doc.expiry_date ? formatDate(doc.expiry_date) : "—"}
                                 </span>
                               </div>
                               {NEEDS_EXPIRY_TYPES.has(doc.doc_type as DocType) &&
@@ -917,8 +916,7 @@ function DocumentsPage() {
                                     className="mt-1 inline-flex items-center rounded-sm bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-orange-800"
                                     title={`Document reads ${doc.extracted_expiry_date}`}
                                   >
-                                    Cert:{" "}
-                                    {new Date(doc.extracted_expiry_date!).toLocaleDateString()}
+                                    Cert: {formatDate(doc.extracted_expiry_date!)}
                                   </div>
                                 )}
                             </TableCell>
@@ -1055,8 +1053,7 @@ function DocumentsPage() {
                     className="mt-1.5 text-[11px] text-orange-700"
                     data-testid="edit-expiry-mismatch"
                   >
-                    Note: certificate reads{" "}
-                    {new Date(editingDoc.extracted_expiry_date!).toLocaleDateString()}
+                    Note: certificate reads {formatDate(editingDoc.extracted_expiry_date!)}
                   </p>
                 )}
               </Field>

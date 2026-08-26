@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ActivityItem } from "@/lib/api-client";
+import { formatDate } from "@/lib/date";
 import { activityQuery } from "@/lib/queries";
 
 const ACTIVITY_TABS = [
@@ -34,7 +35,7 @@ function timeAgo(iso: string): string {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   if (d < 30) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 function currencyRand(n: number): string {

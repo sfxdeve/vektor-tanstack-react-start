@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { apiGet, apiSend, qk } from "@/lib/api-client";
+import { formatDate, formatDateTime } from "@/lib/date";
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsersPage,
@@ -328,7 +329,7 @@ function AdminUsersPage() {
                     </TableCell>
                     <TableCell className="px-6 py-4 text-zinc-300">{u.company_count}</TableCell>
                     <TableCell className="px-6 py-4 text-xs text-zinc-400">
-                      {u.created_at ? new Date(u.created_at).toLocaleDateString("en-ZA") : "—"}
+                      {u.created_at ? formatDate(u.created_at) : "—"}
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
                       <div className="inline-flex items-center gap-2">
@@ -386,7 +387,7 @@ function AdminUsersPage() {
               <p className="text-xs text-zinc-400">
                 {selectedDetail.user.name} · {selectedDetail.user.role} · created{" "}
                 {selectedDetail.user.created_at
-                  ? new Date(selectedDetail.user.created_at).toLocaleString()
+                  ? formatDateTime(selectedDetail.user.created_at)
                   : "—"}
               </p>
             </div>

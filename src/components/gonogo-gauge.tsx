@@ -74,7 +74,7 @@ export function GoNoGoGauge({ score }: { score: number }) {
         </text>
       </svg>
       <div className="text-center mt-1" style={{ color }} data-testid="gonogo-label-wrapper">
-        <div className="text-xl font-bold tracking-tight" data-testid="gonogo-label">
+        <div className="text-xl font-bold tracking-tight" data-testid="verdict-label">
           {label}
         </div>
         <div className="text-xs text-zinc-500">{subtitle}</div>

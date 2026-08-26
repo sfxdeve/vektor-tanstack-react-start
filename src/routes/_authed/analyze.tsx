@@ -14,9 +14,9 @@ import { toast } from "sonner";
 import { GoNoGoGauge } from "@/components/gonogo-gauge";
 
 import { apiForm, apiSend, type ReturnableState } from "@/lib/api-client";
-import { verdictFromScore } from "@/lib/tender-scoring";
 import { companiesQuery, creditsQuery, tendersQuery } from "@/lib/queries";
 import { downloadAuthenticatedFile } from "@/lib/download";
+import { formatDate } from "@/lib/date";
 import { NoCompanyEmpty } from "@/components/no-company-empty";
 import { useActiveCompany } from "@/hooks/use-active-company";
 import {
@@ -264,10 +264,6 @@ function AnalyzePage() {
       </div>
     );
   }
-
-  // Server sends the verdict on fresh analyses; older rows fall back to the
-  // shared threshold function.
-  const verdict = result ? (result.verdict ?? verdictFromScore(result.fit_score)) : null;
 
   return (
     <div className="flex-1 overflow-auto bg-zinc-50">
@@ -517,14 +513,6 @@ function AnalyzePage() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-shrink-0">
                     <GoNoGoGauge score={result.fit_score} />
-                    {verdict && (
-                      <p
-                        className="text-center text-sm font-semibold tracking-[0.12em] uppercase mt-2"
-                        data-testid="verdict-label"
-                      >
-                        {verdict}
-                      </p>
-                    )}
                   </div>
                   <div className="flex-1 space-y-4 md:border-l md:border-zinc-200 md:pl-6 w-full">
                     <div data-testid="bbbee-points-block">
@@ -604,7 +592,7 @@ function AnalyzePage() {
                         Closing Date
                       </p>
                       <p className="font-semibold mt-1" data-testid="closing-date-value">
-                        {new Date(result.closing_date).toLocaleDateString()}
+                        {formatDate(result.closing_date)}
                       </p>
                     </div>
                   )}
