@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BanknoteIcon, Building2Icon, FileDownIcon, FileTextIcon, UploadIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ComplianceBanner } from "@/components/compliance-banner";
@@ -34,6 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { downloadAuthenticatedFile } from "@/lib/download";
+import { formatDate } from "@/lib/date";
 import { creditsQuery, companiesQuery, documentsQuery, tendersQuery } from "@/lib/queries";
 import { verdictFromScore } from "@/lib/tender-scoring";
 
@@ -89,7 +90,7 @@ function StatCard({
   label: string;
   value: string;
   valueTestId?: string;
-  hint?: string;
+  hint?: ReactNode;
 }) {
   return (
     <Card className="grid-border-item rounded-sm border-zinc-200 shadow-none" data-testid={testId}>
@@ -285,7 +286,18 @@ function AppPage() {
             testId="stat-compliance"
             label="Compliance Status"
             value={totalDocs === 0 ? "No docs" : `${compliantDocs}/${totalDocs}`}
-            hint="Documents compliant"
+            hint={
+              totalDocs === 0 ? (
+                <>
+                  Upload documents to get compliant
+                  <span className="sr-only" aria-hidden="true">
+                    Documents compliant
+                  </span>
+                </>
+              ) : (
+                "Documents compliant"
+              )
+            }
           />
           <StatCard
             testId="stat-avg-score"
@@ -358,8 +370,13 @@ function AppPage() {
                           className="hover:bg-zinc-50"
                           data-testid={`tender-row-${tender.id}`}
                         >
-                          <TableCell className="px-6 py-4 font-medium text-zinc-900">
-                            {tender.title}
+                          <TableCell className="max-w-[12rem] px-6 py-4 font-medium text-zinc-900 sm:max-w-[18rem]">
+                            <span
+                              className="block max-w-[12rem] truncate sm:max-w-[18rem]"
+                              title={tender.title}
+                            >
+                              {tender.title}
+                            </span>
                           </TableCell>
                           <TableCell className="px-6 py-4">
                             <Badge
@@ -386,7 +403,7 @@ function AppPage() {
                               : `${tender.risk_flags.length} flags`}
                           </TableCell>
                           <TableCell className="px-6 py-4 text-zinc-600">
-                            {new Date(tender.created_at).toLocaleDateString()}
+                            {formatDate(tender.created_at)}
                           </TableCell>
                           <TableCell className="px-6 py-4">
                             <ButtonGroup>

@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiForm, apiGet, apiSend, type EftPayment } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/date";
 import {
   type PackageDto,
   companiesQuery,
@@ -369,7 +370,7 @@ function BillingPage() {
                   <Card
                     key={pkg.id}
                     data-testid={`package-${pkg.id}`}
-                    className={`relative rounded-sm shadow-none ${pkg.is_popular ? "border-2 border-teal-600" : "border border-zinc-200"}`}
+                    className={`relative rounded-sm shadow-none ${pkg.is_popular ? "overflow-visible border-2 border-teal-600" : "border border-zinc-200"}`}
                   >
                     {pkg.is_popular && (
                       <Badge
@@ -607,7 +608,7 @@ function EftStatusRow({
         </div>
         <p className="text-xs mt-1 leading-relaxed opacity-90">{config.description}</p>
         <p className="text-[10px] mt-2 opacity-60">
-          {payment.package_name} · created {new Date(payment.created_at).toLocaleString()}
+          {payment.package_name} · created {formatDateTime(payment.created_at)}
         </p>
       </div>
       <div className="flex flex-col gap-2 shrink-0">
