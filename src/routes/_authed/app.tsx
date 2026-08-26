@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BanknoteIcon, Building2Icon, FileDownIcon, FileTextIcon, UploadIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { ComplianceBanner } from "@/components/compliance-banner";
@@ -90,7 +90,7 @@ function StatCard({
   label: string;
   value: string;
   valueTestId?: string;
-  hint?: ReactNode;
+  hint?: string;
 }) {
   return (
     <Card className="grid-border-item rounded-sm border-zinc-200 shadow-none" data-testid={testId}>
@@ -285,19 +285,8 @@ function AppPage() {
           <StatCard
             testId="stat-compliance"
             label="Compliance Status"
-            value={totalDocs === 0 ? "No docs" : `${compliantDocs}/${totalDocs}`}
-            hint={
-              totalDocs === 0 ? (
-                <>
-                  Upload documents to get compliant
-                  <span className="sr-only" aria-hidden="true">
-                    Documents compliant
-                  </span>
-                </>
-              ) : (
-                "Documents compliant"
-              )
-            }
+            value={`${compliantDocs}/${totalDocs}`}
+            hint="Documents compliant"
           />
           <StatCard
             testId="stat-avg-score"
