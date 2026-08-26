@@ -130,6 +130,16 @@
   body:has([data-testid="impersonation-banner"]) {
     --impersonation-banner-height: 2.5rem;
     padding-top: var(--impersonation-banner-height);
+
+    [data-slot="sidebar-container"] {
+      top: var(--impersonation-banner-height);
+      height: calc(100svh - var(--impersonation-banner-height));
+    }
+
+    [data-slot="sheet-content"][data-side="left"] {
+      top: var(--impersonation-banner-height);
+      height: calc(100svh - var(--impersonation-banner-height));
+    }
   }
 
   h1,
