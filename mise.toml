@@ -1,6 +1,6 @@
 [tools]
-node = "24.19.0"
-nub = "0.7.5"
+node = "24.20.0"
+nub = "0.8.0"
 
 [tasks.setup]
 description = "Install locked dependencies and browser binaries for Playwright"

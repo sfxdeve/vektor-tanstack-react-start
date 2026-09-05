@@ -12,13 +12,13 @@ dist-ssr/
 coverage/
 playwright-report/
 test-results/
+artifacts/
 blob-report/
 playwright/.cache/
 
 # Local environment and tool state
 .env
 .env.*
-!.env.example
 *.local
 *.tsbuildinfo
 .dev.vars*
@@ -42,3 +42,6 @@ playwright/.cache/
 
 # Scratch - local issue tracker
 .scratch/
+
+# Large municipal tender PDFs used by tests/e2e/tender-municipal.spec.ts
+tests/fixtures/tenders/*.pdf

@@ -1,21 +1,31 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
-// Pinned at 1.167.1 — latest as of 2026-08-20 but no release since 2026-05-29 (~80 patches behind router).
-// Keep pinned; see https://github.com/TanStack/router/issues/7529 (stream hang with router-core ≥1.171.7).
-// Canonical per https://tanstack.com/router/latest/docs/integrations/query — no replacement exists.
+// TanStack Start 1.168.46 selects Router 1.170.29; the independent SSR-query
+// integration currently resolves to 1.167.1. Keep the canonical integration.
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
 
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // App data (companies, documents, tenders, credits) only changes
+        // through user actions in this app, so aggressive background refetching
+        // just churns renders (and starves axe scans in e2e).
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
+  });
   const router = createRouter({
     routeTree,
     context: { queryClient },
     defaultPreload: "intent",
     defaultPreloadStaleTime: 0,
     scrollRestoration: true,
-    scrollRestorationBehavior: "smooth",
+    scrollRestorationBehavior: "auto",
   });
 
   setupRouterSsrQueryIntegration({ router, queryClient });
